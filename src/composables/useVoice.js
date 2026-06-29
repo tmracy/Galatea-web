@@ -3,6 +3,49 @@ import { ref } from 'vue'
 const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition || null
 
+// 当前 TTS 音频的实时响度（0~1），供 Live2D 做嘴型同步（lipSync）。模块级共享，跨组件可读。
+export const audioLevel = ref(0)
+
+let _audioCtx = null
+let _lipRaf = null
+
+// 给正在播放的 <audio> 接一个分析器，逐帧把响度写进 audioLevel
+function startLipSync(audioEl) {
+  stopLipSync()
+  try {
+    _audioCtx =
+      _audioCtx || new (window.AudioContext || window.webkitAudioContext)()
+    if (_audioCtx.state === 'suspended') _audioCtx.resume()
+    const source = _audioCtx.createMediaElementSource(audioEl)
+    const analyser = _audioCtx.createAnalyser()
+    analyser.fftSize = 512
+    source.connect(analyser)
+    analyser.connect(_audioCtx.destination) // 必须接回扬声器，否则没声音
+    const buf = new Uint8Array(analyser.frequencyBinCount)
+    const tick = () => {
+      analyser.getByteTimeDomainData(buf)
+      let sum = 0
+      for (let i = 0; i < buf.length; i++) {
+        const d = (buf[i] - 128) / 128
+        sum += d * d
+      }
+      const rms = Math.sqrt(sum / buf.length)
+      audioLevel.value = Math.min(1, rms * 3.5) // 放大一点，张嘴更明显
+      _lipRaf = requestAnimationFrame(tick)
+    }
+    tick()
+  } catch (_) {
+    // 分析器是可选增强，失败不影响音频播放
+    audioLevel.value = 0
+  }
+}
+
+function stopLipSync() {
+  if (_lipRaf) cancelAnimationFrame(_lipRaf)
+  _lipRaf = null
+  audioLevel.value = 0
+}
+
 /**
  * 语音输入：优先用浏览器 Web Speech API（Chrome/Edge 支持中文识别，无需后端）。
  * 不支持时 supported=false，由调用方提示用户改用文本输入或接入后端 ASR。
@@ -71,6 +114,7 @@ export function useVoiceOutput() {
       currentAudio = null
     }
     if (window.speechSynthesis) window.speechSynthesis.cancel()
+    stopLipSync()
     speaking.value = false
   }
 
@@ -80,9 +124,19 @@ export function useVoiceOutput() {
     if (audioUrl) {
       currentAudio = new Audio(audioUrl)
       speaking.value = true
-      currentAudio.onended = () => (speaking.value = false)
-      currentAudio.onerror = () => (speaking.value = false)
-      currentAudio.play().catch(() => (speaking.value = false))
+      startLipSync(currentAudio)
+      currentAudio.onended = () => {
+        stopLipSync()
+        speaking.value = false
+      }
+      currentAudio.onerror = () => {
+        stopLipSync()
+        speaking.value = false
+      }
+      currentAudio.play().catch(() => {
+        stopLipSync()
+        speaking.value = false
+      })
       return
     }
     if (window.speechSynthesis && text) {
