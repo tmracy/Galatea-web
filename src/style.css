@@ -1,0 +1,74 @@
+:root {
+  --bg-0: #14101c;
+  --bg-1: #1d1830;
+  --panel: rgba(255, 255, 255, 0.06);
+  --panel-strong: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.12);
+  --text: #f4f1fb;
+  --text-dim: #b7afce;
+  --text-faint: #7d758f;
+  --accent: #ff8fb1;
+  --accent-2: #a78bfa;
+  --accent-grad: linear-gradient(135deg, #ff8fb1 0%, #a78bfa 100%);
+  --user-bubble: linear-gradient(135deg, #ff8fb1 0%, #f06b9b 100%);
+  --ai-bubble: rgba(255, 255, 255, 0.08);
+  --danger: #ff6b6b;
+  --radius: 18px;
+  --shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI',
+    Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  color: var(--text);
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(167, 139, 250, 0.25), transparent 60%),
+    radial-gradient(1000px 500px at 0% 110%, rgba(255, 143, 177, 0.2), transparent 55%),
+    linear-gradient(160deg, var(--bg-0), var(--bg-1));
+  overflow: hidden;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+input,
+textarea {
+  font-family: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.glass {
+  background: var(--panel);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid var(--border);
+}
