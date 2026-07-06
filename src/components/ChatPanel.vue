@@ -2,7 +2,7 @@
 import { ref, nextTick, watch, onMounted } from 'vue'
 import MessageBubble from './MessageBubble.vue'
 import VoiceCloneModal from './VoiceCloneModal.vue'
-import { sendChat, synthesizeTTS, uploadChatHistory } from '../api/index.js'
+import { sendChatStream, synthesizeTTS, uploadChatHistory } from '../api/index.js'
 import { useVoiceInput, useVoiceOutput } from '../composables/useVoice.js'
 
 const props = defineProps({
@@ -48,20 +48,29 @@ async function send(text) {
   messages.value.push({ role: 'assistant', content: '', pending: true })
   scrollToBottom()
   sending.value = true
+  voiceOut.stop() // 清掉上一条回复可能还在排队/播放的音频
+  const last = messages.value[messages.value.length - 1]
   try {
-    const res = await sendChat({ text: content, sessionId: props.sessionId })
-    const last = messages.value[messages.value.length - 1]
-    last.content = res.reply || '（没有收到回复）'
-    last.pending = false
-    // 先用后端返回的 audioUrl；没有则单独走 /api/tts 合成克隆音色；仍失败则浏览器朗读兜底
-    let audioUrl = res.audioUrl
-    if (!audioUrl && !voiceOut.muted.value) {
-      audioUrl = await synthesizeTTS({ text: last.content, voice: voice.value })
+    // 流式：每收到一句就即时上屏 + 合成克隆音色入队顺序播放，大幅降低首音延迟
+    await sendChatStream({
+      text: content,
+      sessionId: props.sessionId,
+      onSentence: async (sentence) => {
+        last.content += sentence
+        last.pending = false
+        scrollToBottom()
+        if (!voiceOut.muted.value) {
+          const audioUrl = await synthesizeTTS({ text: sentence, voice: voice.value })
+          voiceOut.enqueue(audioUrl, sentence)
+        }
+      },
+    })
+    if (!last.content) {
+      last.content = '（没有收到回复）'
+      last.pending = false
     }
-    voiceOut.speak(last.content, audioUrl)
   } catch (e) {
-    const last = messages.value[messages.value.length - 1]
-    last.content = '抱歉，刚刚走神了，再说一次好吗？'
+    last.content = last.content || '抱歉，刚刚走神了，再说一次好吗？'
     last.pending = false
   } finally {
     sending.value = false

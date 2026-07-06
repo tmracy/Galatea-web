@@ -53,6 +53,60 @@ export async function sendChat({ text, sessionId }) {
 }
 
 /**
+ * 流式发送一条用户消息（SSE）。后端逐句推送，onSentence 每句回调一次。
+ * 对齐 entry/server.py：POST /api/chat/stream，body { query, id }，事件 data:{sentence|done|error}。
+ * 返回 { reply }（完整文本）。后端不可用时回退 mock。
+ * @param {{ text: string, sessionId: string, onSentence?: (s: string) => any }} payload
+ */
+export async function sendChatStream({ text, sessionId, onSentence }) {
+  if (useMock() || chatBackendDown) {
+    const r = await mockChat(text)
+    if (r.reply && onSentence) await onSentence(r.reply)
+    return { reply: r.reply }
+  }
+  let full = ''
+  try {
+    const res = await fetch(url('/api/chat/stream'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: text, id: sessionId }),
+    })
+    if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buf = ''
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buf += decoder.decode(value, { stream: true })
+      let idx
+      while ((idx = buf.indexOf('\n\n')) !== -1) {
+        const raw = buf.slice(0, idx).trim()
+        buf = buf.slice(idx + 2)
+        if (!raw.startsWith('data:')) continue
+        const evt = JSON.parse(raw.slice(5).trim())
+        if (evt.sentence) {
+          full += evt.sentence
+          if (onSentence) await onSentence(evt.sentence)
+        } else if (evt.error) {
+          throw new Error(evt.error)
+        } else if (evt.done) {
+          full = evt.reply ?? full
+        }
+      }
+    }
+    return { reply: full }
+  } catch (e) {
+    console.warn('[api] /api/chat/stream 失败，回退到 mock：', e.message)
+    chatBackendDown = true
+    const r = await mockChat(text)
+    if (r.reply && onSentence) await onSentence(r.reply)
+    return { reply: r.reply }
+  }
+}
+
+/**
  * 上传一段录音做 ASR，返回 { text }。后端不可用时返回 null（由调用方走浏览器识别兜底）。
  */
 export async function transcribe(blob, sessionId) {

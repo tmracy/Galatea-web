@@ -102,6 +102,8 @@ export function useVoiceOutput() {
   const speaking = ref(false)
   const muted = ref(false)
   let currentAudio = null
+  let queue = []
+  let playing = false
 
   function toggleMute() {
     muted.value = !muted.value
@@ -109,6 +111,8 @@ export function useVoiceOutput() {
   }
 
   function stop() {
+    queue = []
+    playing = false
     if (currentAudio) {
       currentAudio.pause()
       currentAudio = null
@@ -116,6 +120,54 @@ export function useVoiceOutput() {
     if (window.speechSynthesis) window.speechSynthesis.cancel()
     stopLipSync()
     speaking.value = false
+  }
+
+  function _playNext() {
+    if (!queue.length) {
+      playing = false
+      speaking.value = false
+      stopLipSync()
+      return
+    }
+    playing = true
+    const url = queue.shift()
+    currentAudio = new Audio(url)
+    speaking.value = true
+    startLipSync(currentAudio)
+    currentAudio.onended = () => {
+      stopLipSync()
+      _playNext()
+    }
+    currentAudio.onerror = () => {
+      stopLipSync()
+      _playNext()
+    }
+    currentAudio.play().catch(() => {
+      stopLipSync()
+      _playNext()
+    })
+  }
+
+  /**
+   * 逐句排队播放：流式场景每合成好一句音频就入队，按顺序播放不重叠。
+   * 传入 audioUrl 走克隆音色；无 audioUrl 时用浏览器 TTS 兜底（其原生队列保证顺序）。
+   */
+  function enqueue(audioUrl, text) {
+    if (muted.value) return
+    if (audioUrl) {
+      queue.push(audioUrl)
+      if (!playing) _playNext()
+    } else if (window.speechSynthesis && text) {
+      const u = new SpeechSynthesisUtterance(text)
+      u.lang = 'zh-CN'
+      u.rate = 1
+      u.pitch = 1.05
+      speaking.value = true
+      u.onend = () => {
+        if (!window.speechSynthesis.speaking) speaking.value = false
+      }
+      window.speechSynthesis.speak(u)
+    }
   }
 
   function speak(text, audioUrl) {
@@ -151,5 +203,5 @@ export function useVoiceOutput() {
     }
   }
 
-  return { speaking, muted, toggleMute, speak, stop }
+  return { speaking, muted, toggleMute, speak, enqueue, stop }
 }
