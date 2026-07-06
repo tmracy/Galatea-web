@@ -55,10 +55,26 @@ export function useVoiceInput() {
   const partial = ref('')
   const supported = ref(!!SpeechRecognition)
   let recognition = null
+  let gotFinal = false // 本轮是否已拿到最终结果，避免 onresult 与 onend 重复回调
+
+  // 彻底销毁旧的识别实例：摘掉回调再 abort，防止残留对象把 listening 卡住
+  function _teardown() {
+    if (recognition) {
+      recognition.onresult = null
+      recognition.onerror = null
+      recognition.onend = null
+      try {
+        recognition.abort()
+      } catch (_) {}
+      recognition = null
+    }
+  }
 
   function start(onFinal) {
     if (!supported.value) return
-    if (listening.value) return
+    // 无论 listening 当前状态如何，先强制清理，保证可重复开始（修复卡在“正在听”）
+    _teardown()
+    gotFinal = false
     recognition = new SpeechRecognition()
     recognition.lang = 'zh-CN'
     recognition.interimResults = true
@@ -73,10 +89,16 @@ export function useVoiceInput() {
         else interim += t
       }
       partial.value = interim || final
-      if (final) onFinal?.(final.trim())
+      if (final && !gotFinal) {
+        gotFinal = true
+        const text = final.trim()
+        stop() // 拿到结果立刻结束本轮，避免继续把 AI 播报声录进来
+        onFinal?.(text)
+      }
     }
     recognition.onerror = () => {
       listening.value = false
+      partial.value = ''
     }
     recognition.onend = () => {
       listening.value = false
@@ -85,11 +107,23 @@ export function useVoiceInput() {
 
     listening.value = true
     partial.value = ''
-    recognition.start()
+    try {
+      recognition.start()
+    } catch (_) {
+      // start 抛异常（多为上一轮未完全释放）：复位状态，用户可再次点击
+      listening.value = false
+      _teardown()
+    }
   }
 
   function stop() {
-    if (recognition && listening.value) recognition.stop()
+    listening.value = false // 先复位 UI，杜绝卡在“正在听”
+    partial.value = ''
+    if (recognition) {
+      try {
+        recognition.stop()
+      } catch (_) {}
+    }
   }
 
   return { listening, partial, supported, start, stop }
