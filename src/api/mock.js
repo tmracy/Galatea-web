@@ -21,8 +21,8 @@ export function mockChat(text) {
 const DEFAULT_SKILLS = [
   {
     id: 'hh',
-    name: '张蕊',
-    description: '29 岁的温柔姐姐，跨境电商，喜欢被叫「姐姐」。',
+    name: '明日香',
+    description: '29岁，温柔姐姐',
     active: true,
     builtin: true,
   },

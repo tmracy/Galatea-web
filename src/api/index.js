@@ -242,6 +242,50 @@ export async function uploadSkill(skill) {
   }
 }
 
+/**
+ * 上传整个文件夹给生产力 agent。对齐 entry/server.py：POST /agent/upload（multipart）。
+ * @param {{ files: File[], sessionId: string }} payload
+ * @returns {Promise<{ taskname: string, count: number }>} taskname 为文件夹顶层目录名
+ */
+export async function uploadTaskFolder({ files, sessionId }) {
+  const form = new FormData()
+  form.append('session_id', sessionId)
+  for (const f of files) {
+    form.append('files', f, f.name)
+    form.append('paths', f.webkitRelativePath || f.name)
+  }
+  const res = await fetch(url('/agent/upload'), { method: 'POST', body: form })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const data = await res.json()
+  if (data?.code !== 0) throw new Error(data?.info || '上传失败')
+  return { taskname: data.taskname, count: data.count }
+}
+
+/**
+ * 运行生产力 agent。对齐 entry/server.py：POST /agent/simple，body { taskname, query, session_id }。
+ * @param {{ taskName: string, query: string, sessionId: string }} payload
+ * @returns {Promise<{ result: string }>}
+ */
+export async function runSimpleAgent({ taskName, query, sessionId }) {
+  const data = await postJSON('/agent/simple', {
+    taskname: taskName,
+    query,
+    session_id: sessionId,
+  })
+  if (data?.code !== 0) throw new Error(data?.info || '任务执行失败')
+  return { result: data.info, download: data.download || null }
+}
+
+/** 下载 agent 工作区里的文件 */
+export function downloadAgentFile({ sessionId, taskName, filename }) {
+  const q = new URLSearchParams({
+    session_id: sessionId,
+    taskname: taskName,
+    filename,
+  })
+  window.open(url(`/agent/download?${q}`), '_blank')
+}
+
 export const apiInfo = {
   base: BASE || '(vite proxy → :8000)',
   isMock: useMock,

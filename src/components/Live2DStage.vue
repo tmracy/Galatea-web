@@ -4,7 +4,7 @@ import { audioLevel } from '../composables/useVoice.js'
 
 const props = defineProps({
   speaking: { type: Boolean, default: false },
-  name: { type: String, default: '张蕊' },
+  name: { type: String, default: '明日香' },
 })
 
 const stageRef = ref(null)

@@ -89,7 +89,7 @@ function activate(id) {
     </div>
 
     <div class="section-title">
-      <span>Skill 人设</span>
+      <span>人设</span>
       <button class="add" :disabled="uploading" @click="pickFile">＋ 上传</button>
       <input
         ref="fileInput"
@@ -138,7 +138,6 @@ function activate(id) {
 
     <div class="foot">
       <button class="logout" type="button" @click="emit('logout')">退出登录</button>
-      <p class="muted">Skill 为人设；记忆按上方 session_id 隔离。</p>
     </div>
   </aside>
 </template>

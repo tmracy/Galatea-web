@@ -10,7 +10,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['speaking'])
 
-const GREETING = '嗨，我是张蕊。想聊点什么呀？打字或者点麦克风跟我说话都行。'
+const GREETING = '嗨，我是明日香。想聊点什么呀？打字或者点麦克风跟我说话都行。'
 const messages = ref([{ role: 'assistant', content: GREETING }])
 const input = ref('')
 const sending = ref(false)
