@@ -6,8 +6,14 @@ const FORCE_MOCK = import.meta.env.VITE_USE_MOCK === '1'
 // 仅 VITE_USE_MOCK=1 时强制 mock；否则走真实后端（BASE 为空时经 vite 代理到 8000）。
 const useMock = () => FORCE_MOCK
 
-// chat 接口失败后本会话内回退 mock（skills 等接口单独处理）。
+// 仅当后端“连不上”（网络层失败）时本会话回退 mock；后端单次业务报错不锁定，下次仍重试。
 let chatBackendDown = false
+
+// fetch 在网络不可达/连接被拒时抛 TypeError；HTTP 4xx/5xx 不会 reject。
+// 据此区分“后端没起来”与“后端跑起来了但这次报错”。
+function isNetworkError(e) {
+  return e instanceof TypeError
+}
 
 function url(path) {
   // 配置了 BASE 用绝对地址；否则用相对 /api（配合 vite 代理 → Flask :8000）。
@@ -44,10 +50,11 @@ export async function sendChat({ text, sessionId }) {
       query: text,
       id: sessionId,
     })
+    chatBackendDown = false // 后端可用，解除可能的回退状态
     return unwrapFlask(data, 'reply')
   } catch (e) {
     console.warn('[api] /api/chat 失败，回退到 mock：', e.message)
-    chatBackendDown = true
+    if (isNetworkError(e)) chatBackendDown = true // 仅“连不上”才本会话锁定
     return mockChat(text)
   }
 }
@@ -72,6 +79,7 @@ export async function sendChatStream({ text, sessionId, onSentence }) {
       body: JSON.stringify({ query: text, id: sessionId }),
     })
     if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
+    chatBackendDown = false // 后端有响应，解除可能的回退状态
 
     const reader = res.body.getReader()
     const decoder = new TextDecoder()
@@ -99,7 +107,7 @@ export async function sendChatStream({ text, sessionId, onSentence }) {
     return { reply: full }
   } catch (e) {
     console.warn('[api] /api/chat/stream 失败，回退到 mock：', e.message)
-    chatBackendDown = true
+    if (isNetworkError(e)) chatBackendDown = true // 仅“连不上”才本会话锁定，后端单次报错下次仍重试
     const r = await mockChat(text)
     if (r.reply && onSentence) await onSentence(r.reply)
     return { reply: r.reply }
