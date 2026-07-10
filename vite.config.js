@@ -17,6 +17,10 @@ export default defineConfig({
         target: process.env.VITE_PROXY_TARGET || 'http://127.0.0.1:8001',
         changeOrigin: true,
       },
+      '/emotion': {
+        target: process.env.VITE_PROXY_TARGET || 'http://127.0.0.1:8001',
+        changeOrigin: true,
+      },
     },
   },
 })

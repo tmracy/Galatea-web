@@ -276,6 +276,20 @@ export async function runSimpleAgent({ taskName, query, sessionId }) {
   return { result: data.info, download: data.download || null }
 }
 
+/**
+ * 情绪陪伴对话。对齐 entry/server.py：POST /emotion/chat，body { query, session_id }。
+ * @param {{ query: string, sessionId: string }} payload
+ * @returns {Promise<{ reply: string }>}
+ */
+export async function sendEmotionChat({ query, sessionId }) {
+  const data = await postJSON('/emotion/chat', {
+    query,
+    session_id: sessionId,
+  })
+  if (data?.code !== 0) throw new Error(data?.info || '情绪回应失败')
+  return { reply: data.info ?? '' }
+}
+
 /** 下载 agent 工作区里的文件 */
 export function downloadAgentFile({ sessionId, taskName, filename }) {
   const q = new URLSearchParams({

@@ -3,13 +3,14 @@ import { ref, computed } from 'vue'
 import SkillSidebar from './components/SkillSidebar.vue'
 import Live2DStage from './components/Live2DStage.vue'
 import AgentPanel from './components/AgentPanel.vue'
+import EmotionPanel from './components/EmotionPanel.vue'
 import ChatPanel from './components/ChatPanel.vue'
 import LoginGate from './components/LoginGate.vue'
 import { useAuth } from './composables/useAuth.js'
 
 const speaking = ref(false)
 const activeSkill = ref({ id: 'hh', name: '明日香' })
-const middleMode = ref('companion') // companion | agent
+const middleMode = ref('companion') // companion | agent | emotion
 
 const { isLoggedIn, currentSessionId, logout } = useAuth()
 
@@ -47,6 +48,12 @@ function onActivate(skill) {
         >
           生产力
         </button>
+        <button
+          :class="{ on: middleMode === 'emotion' }"
+          @click="middleMode = 'emotion'"
+        >
+          情绪
+        </button>
       </div>
 
       <Live2DStage
@@ -55,6 +62,7 @@ function onActivate(skill) {
         :name="activeSkill.name"
       />
       <AgentPanel v-show="middleMode === 'agent'" :session-id="sessionId" />
+      <EmotionPanel v-show="middleMode === 'emotion'" :session-id="sessionId" />
     </main>
 
     <section class="col-chat">
@@ -100,9 +108,9 @@ function onActivate(skill) {
   backdrop-filter: blur(10px);
 }
 .mode-switch button {
-  padding: 6px 14px;
+  padding: 6px 12px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-dim);
   transition: color 0.18s, background 0.18s;
