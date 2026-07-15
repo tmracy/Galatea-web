@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { listSkills, uploadSkill } from '../api/index.js'
 import { parseFrontmatter } from '../utils/frontmatter.js'
 
@@ -15,15 +15,44 @@ const error = ref('')
 const fileInput = ref(null)
 const preview = ref(null) // 上传前的解析预览
 
+async function refreshSkills() {
+  if (!props.sessionId) {
+    skills.value = []
+    return
+  }
+  const list = await listSkills(props.sessionId)
+  skills.value = list
+  const active = list.find((s) => s.active) || list[0]
+  if (active) emit('activate', active)
+}
+
 onMounted(async () => {
   try {
-    skills.value = await listSkills()
-  } catch (_) {
+    await refreshSkills()
+  } catch (e) {
+    error.value = '加载人设失败：' + (e.message || e)
     skills.value = []
   } finally {
     loading.value = false
   }
 })
+
+watch(
+  () => props.sessionId,
+  async (id) => {
+    if (!id) return
+    loading.value = true
+    error.value = ''
+    try {
+      await refreshSkills()
+    } catch (e) {
+      error.value = '加载人设失败：' + (e.message || e)
+      skills.value = []
+    } finally {
+      loading.value = false
+    }
+  },
+)
 
 function pickFile() {
   fileInput.value?.click()
@@ -43,7 +72,7 @@ async function onFile(e) {
     error.value = '未找到 frontmatter 中的 name 字段，请检查 skill.md 格式'
   }
   preview.value = {
-    id: data.name || file.name.replace(/\.md$/, ''),
+    id: props.sessionId || data.name || file.name.replace(/\.md$/, ''),
     name: data.name || file.name,
     description: (data.description || body.slice(0, 120)).trim(),
     content,
@@ -53,16 +82,27 @@ async function onFile(e) {
 
 async function confirmUpload() {
   if (!preview.value) return
+  if (!props.sessionId) {
+    error.value = '请先登录后再上传人设'
+    return
+  }
   uploading.value = true
   error.value = ''
   try {
-    const saved = await uploadSkill({ ...preview.value, sessionId: preview.value.id })
-    // 去重后加入列表并激活
+    const saved = await uploadSkill({
+      ...preview.value,
+      sessionId: props.sessionId,
+    })
     skills.value = [
-      { ...preview.value, active: true, ...saved },
-      ...skills.value.map((s) => ({ ...s, active: false })),
-    ].filter((s, idx, arr) => arr.findIndex((x) => x.id === s.id) === idx)
-    activate(preview.value.id)
+      {
+        id: saved.id || props.sessionId,
+        name: saved.name || preview.value.name,
+        description: saved.description || preview.value.description,
+        active: true,
+        builtin: false,
+      },
+    ]
+    activate(skills.value[0].id)
     preview.value = null
   } catch (e) {
     error.value = '上传失败：' + e.message
@@ -119,7 +159,7 @@ function activate(id) {
 
     <div class="list">
       <p v-if="loading" class="muted">加载中…</p>
-      <p v-else-if="!skills.length" class="muted">还没有 Skill，点「上传」添加一个 skill.md 吧。</p>
+      <p v-else-if="!skills.length" class="muted">暂无人设。默认明日香会在首次聊天时自动就绪，也可点「上传」自定义 skill.md。</p>
       <button
         v-for="s in skills"
         :key="s.id"

@@ -7,6 +7,10 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    allowedHosts: [
+      '.ngrok-free.app',
+      '.ngrok.app',
+    ],
     // 如后端跑在本机 8000，可启用以下代理，前端用相对路径 /api 即可
     proxy: {
       '/api': {

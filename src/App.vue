@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import SkillSidebar from './components/SkillSidebar.vue'
 import Live2DStage from './components/Live2DStage.vue'
 import AgentPanel from './components/AgentPanel.vue'
@@ -21,6 +21,13 @@ function onActivate(skill) {
   activeSkill.value = skill
   // 不再用 skill.id 覆盖用户 session_id
 }
+
+// Live2D 不能用 display:none，切回陪伴时触发 resize 以免画布尺寸错乱
+watch(middleMode, (m) => {
+  if (m === 'companion') {
+    nextTick(() => window.dispatchEvent(new Event('resize')))
+  }
+})
 </script>
 
 <template>
@@ -56,13 +63,23 @@ function onActivate(skill) {
         </button>
       </div>
 
+      <!-- Live2D 用 visibility 隐藏，避免 display:none 导致人物纹理/部件丢失 -->
       <Live2DStage
-        v-show="middleMode === 'companion'"
+        class="stage-pane"
+        :class="{ off: middleMode !== 'companion' }"
         :speaking="speaking"
         :name="activeSkill.name"
       />
-      <AgentPanel v-show="middleMode === 'agent'" :session-id="sessionId" />
-      <EmotionPanel v-show="middleMode === 'emotion'" :session-id="sessionId" />
+      <AgentPanel
+        v-show="middleMode === 'agent'"
+        class="stage-pane"
+        :session-id="sessionId"
+      />
+      <EmotionPanel
+        v-show="middleMode === 'emotion'"
+        class="stage-pane"
+        :session-id="sessionId"
+      />
     </main>
 
     <section class="col-chat">
@@ -93,6 +110,14 @@ function onActivate(skill) {
   overflow: hidden;
   min-width: 0;
   min-height: 0;
+}
+.stage-pane {
+  position: absolute;
+  inset: 0;
+}
+.stage-pane.off {
+  visibility: hidden;
+  pointer-events: none;
 }
 .mode-switch {
   position: absolute;

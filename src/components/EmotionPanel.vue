@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, nextTick, onBeforeUnmount } from 'vue'
 import MessageBubble from './MessageBubble.vue'
-import { sendEmotionChat, synthesizeTTS } from '../api/index.js'
+import { sendEmotionChat, synthesizeTTS, clearEmotionChat } from '../api/index.js'
 import { useVoiceOutput } from '../composables/useVoice.js'
 
 const props = defineProps({
@@ -103,12 +103,17 @@ async function send(text) {
   }
 }
 
-function reset() {
+async function reset() {
   if (sending.value) return
   voiceOut.stop()
   messages.value = [{ role: 'assistant', content: GREETING }]
   input.value = ''
   errorMsg.value = ''
+  try {
+    await clearEmotionChat({ sessionId: props.sessionId })
+  } catch (err) {
+    errorMsg.value = `清空后端历史失败：${err.message}`
+  }
 }
 
 function onKeydown(e) {
@@ -138,7 +143,7 @@ onBeforeUnmount(() => {
           <span class="badge">💗</span>
           <div>
             <h2>情绪陪伴</h2>
-            <p>深度情绪识别 · 策略化回应 · 张蕊姐姐口吻</p>
+            <p>深度情绪识别 · 策略化回应</p>
           </div>
         </div>
         <button

@@ -217,29 +217,34 @@ export async function uploadChatHistory({ sessionId, chatHistory }) {
   return data
 }
 
-export async function listSkills() {
+/**
+ * 列出当前用户人设。对齐 GET /api/skills?session_id=…
+ * 未上传时后端会确保默认 skill/hh（角色层仍用 prompt/character.md）。
+ */
+export async function listSkills(sessionId) {
   if (useMock()) return mockListSkills()
-  try {
-    const res = await fetch(url('/api/skills'))
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    return res.json()
-  } catch (e) {
-    console.warn('[api] /api/skills 失败，回退到 mock：', e.message)
-    return mockListSkills()
-  }
+  if (!sessionId) throw new Error('缺少 session_id')
+  const res = await fetch(url(`/api/skills?session_id=${encodeURIComponent(sessionId)}`))
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const data = await res.json()
+  if (data?.code === 1) throw new Error(data.info || '获取人设失败')
+  return Array.isArray(data) ? data : data?.skills || []
 }
 
 /**
- * 上传一个 skill。skill = { name, description, content, sessionId }
+ * 上传人设 skill.md，写入 skill/{sessionId}/skill.md。
+ * @param {{ name?: string, description?: string, content: string, sessionId: string }} skill
  */
 export async function uploadSkill(skill) {
   if (useMock()) return mockUploadSkill(skill)
-  try {
-    return await postJSON('/api/skills', skill)
-  } catch (e) {
-    console.warn('[api] 上传 skill 失败，回退到 mock：', e.message)
-    return mockUploadSkill(skill)
-  }
+  const data = await postJSON('/api/skills', {
+    session_id: skill.sessionId,
+    content: skill.content,
+    name: skill.name,
+    description: skill.description,
+  })
+  if (data?.code !== 0) throw new Error(data?.info || '上传人设失败')
+  return data
 }
 
 /**
@@ -288,6 +293,22 @@ export async function sendEmotionChat({ query, sessionId }) {
   })
   if (data?.code !== 0) throw new Error(data?.info || '情绪回应失败')
   return { reply: data.info ?? '' }
+}
+
+/** 清空生产力 Agent 后端多轮历史 */
+export async function clearAgentChat({ sessionId }) {
+  if (useMock()) return { code: 0 }
+  const data = await postJSON('/agent/clear', { session_id: sessionId })
+  if (data?.code !== 0) throw new Error(data?.info || '清空失败')
+  return data
+}
+
+/** 清空情绪模块后端对话历史（与主聊天隔离） */
+export async function clearEmotionChat({ sessionId }) {
+  if (useMock()) return { code: 0 }
+  const data = await postJSON('/emotion/clear', { session_id: sessionId })
+  if (data?.code !== 0) throw new Error(data?.info || '清空失败')
+  return data
 }
 
 /** 下载 agent 工作区里的文件 */

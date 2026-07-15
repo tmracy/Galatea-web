@@ -1,28 +1,26 @@
 <script setup>
-import { ref, computed, onBeforeUnmount } from 'vue'
-import { uploadTaskFolder, runSimpleAgent, downloadAgentFile } from '../api/index.js'
+import { ref, computed, nextTick, onBeforeUnmount } from 'vue'
+import { uploadTaskFolder, runSimpleAgent, downloadAgentFile, clearAgentChat } from '../api/index.js'
 
 const props = defineProps({
   sessionId: { type: String, default: 'web' },
 })
 
-const files = ref([]) // 选中的文件夹内所有文件（File[]）
-const taskName = ref('') // 文件夹顶层目录名，作为后端 taskname
+const files = ref([])
+const taskName = ref('')
 const query = ref('')
 const uploading = ref(false)
 const running = ref(false)
-const result = ref('')
-const downloadFile = ref('')
+const messages = ref([]) // { role: 'user'|'assistant', content, download? }
 const errorMsg = ref('')
+const listRef = ref(null)
 
-// 运行时轮播的“有意思”的分析文案
 const FUN_LINES = [
   '正在翻阅你的文件…',
   '正在理解你的问题…',
   '正在梳理关键信息…',
   '正在把碎片拼成答案…',
   '正在认真思考中…',
-  '正在下笔整理结论…',
   '马上就好，再等我一下…',
 ]
 const funLine = ref(FUN_LINES[0])
@@ -33,6 +31,13 @@ const fileCount = computed(() => files.value.length)
 const canRun = computed(
   () => !busy.value && taskName.value && query.value.trim(),
 )
+const hasChat = computed(() => messages.value.length > 0)
+
+function scrollToBottom() {
+  nextTick(() => {
+    if (listRef.value) listRef.value.scrollTop = listRef.value.scrollHeight
+  })
+}
 
 function startFunLines() {
   let i = 0
@@ -54,11 +59,9 @@ async function onFolderPick(e) {
   const picked = Array.from(e.target.files || [])
   if (!picked.length) return
   files.value = picked
-  result.value = ''
-  downloadFile.value = ''
+  messages.value = []
   errorMsg.value = ''
 
-  // 先上传文件夹到后端 Data/{session_id}/{文件夹名}/
   uploading.value = true
   try {
     const { taskname, count } = await uploadTaskFolder({
@@ -73,48 +76,60 @@ async function onFolderPick(e) {
     files.value = []
   } finally {
     uploading.value = false
-    e.target.value = '' // 允许重复选同一文件夹
+    e.target.value = ''
   }
 }
 
 async function run() {
   if (!canRun.value) return
+  const text = query.value.trim()
+  query.value = ''
   running.value = true
-  result.value = ''
-  downloadFile.value = ''
   errorMsg.value = ''
+  messages.value.push({ role: 'user', content: text })
+  scrollToBottom()
   startFunLines()
   try {
     const { result: r, download } = await runSimpleAgent({
       taskName: taskName.value,
-      query: query.value.trim(),
+      query: text,
       sessionId: props.sessionId,
     })
-    result.value = r || '（没有返回内容）'
-    downloadFile.value = download || ''
+    messages.value.push({
+      role: 'assistant',
+      content: r || '（没有返回内容）',
+      download: download || '',
+    })
   } catch (err) {
+    messages.value.pop()
     errorMsg.value = `执行失败：${err.message}`
   } finally {
     running.value = false
     stopFunLines()
+    scrollToBottom()
   }
 }
 
-function reset() {
+async function reset() {
+  if (busy.value) return
   files.value = []
   taskName.value = ''
   query.value = ''
-  result.value = ''
-  downloadFile.value = ''
+  messages.value = []
   errorMsg.value = ''
+  try {
+    await clearAgentChat({ sessionId: props.sessionId })
+  } catch (err) {
+    errorMsg.value = `清空后端历史失败：${err.message}`
+  }
 }
 
-function downloadReport() {
-  if (!downloadFile.value) return
+function downloadReport(filename) {
+  if (!filename) return
   downloadAgentFile({
     sessionId: props.sessionId,
     taskName: taskName.value,
-    filename: downloadFile.value,
+    filename,
   })
 }
 
@@ -128,18 +143,17 @@ onBeforeUnmount(stopFunLines)
       <span class="blob b2"></span>
     </div>
 
-    <div class="inner" :class="{ 'has-result': !!result }">
+    <div class="inner" :class="{ 'has-chat': hasChat }">
       <header class="head">
         <div class="title">
           <span class="badge">⚡</span>
           <div>
             <h2>生产力助手</h2>
-            <p>上传一个文件夹，告诉我你想让我做什么。</p>
+            <p>上传文件夹后可多轮追问，同一会话会记住上下文。</p>
           </div>
         </div>
       </header>
 
-      <!-- 上传文件夹 -->
       <label class="drop" :class="{ active: fileCount }">
         <input
           type="file"
@@ -165,41 +179,50 @@ onBeforeUnmount(stopFunLines)
         </div>
       </label>
 
-      <!-- 任务输入 -->
+      <div v-if="hasChat" ref="listRef" class="chat">
+        <div
+          v-for="(m, i) in messages"
+          :key="i"
+          class="bubble"
+          :class="m.role"
+        >
+          <div class="bubble-body">{{ m.content }}</div>
+          <button
+            v-if="m.download"
+            class="dl-btn"
+            @click="downloadReport(m.download)"
+          >
+            ↓ 下载 {{ m.download }}
+          </button>
+        </div>
+      </div>
+
       <textarea
         v-model="query"
         class="query"
         rows="3"
         :disabled="busy"
-        placeholder="例如：帮我总结这些报告的核心结论，并指出重复的部分"
+        :placeholder="
+          hasChat
+            ? '继续追问，例如：第二节再写深入一点'
+            : '例如：帮我总结这些报告的核心结论'
+        "
+        @keydown.enter.exact.prevent="run"
       ></textarea>
 
       <div class="actions">
         <button class="run" :disabled="!canRun" @click="run">
-          {{ running ? '分析中…' : '开始分析' }}
+          {{ running ? '分析中…' : hasChat ? '继续对话' : '开始分析' }}
         </button>
         <button class="ghost" :disabled="busy" @click="reset">清空</button>
       </div>
 
-      <!-- 运行中的趣味文案 -->
       <div v-if="running" class="thinking">
         <span class="spinner"></span>
         <span class="fun">{{ funLine }}</span>
       </div>
 
-      <!-- 错误 -->
       <div v-if="errorMsg" class="error">{{ errorMsg }}</div>
-
-      <!-- 结果：占满剩余高度，内容在内部滚动 -->
-      <div v-if="result" class="result">
-        <div class="result-head">
-          <span>分析结果</span>
-          <button v-if="downloadFile" class="dl-btn" @click="downloadReport">
-            ↓ 下载 {{ downloadFile }}
-          </button>
-        </div>
-        <div class="result-body">{{ result }}</div>
-      </div>
     </div>
   </div>
 </template>
@@ -246,14 +269,14 @@ onBeforeUnmount(stopFunLines)
   width: 100%;
   height: 100%;
   padding: 22px;
-  padding-top: 52px; /* 给左上角「陪伴/生产力」切换留空 */
+  padding-top: 52px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   min-height: 0;
   overflow-y: auto;
 }
-.inner.has-result {
+.inner.has-chat {
   overflow: hidden;
 }
 
@@ -339,6 +362,48 @@ onBeforeUnmount(stopFunLines)
   color: var(--text-faint);
 }
 
+.chat {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 2px;
+}
+.bubble {
+  max-width: 92%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.bubble.user {
+  align-self: flex-end;
+  background: var(--accent-grad);
+  color: #fff;
+}
+.bubble.assistant {
+  align-self: flex-start;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.bubble-body {
+  white-space: pre-wrap;
+}
+.dl-btn {
+  margin-top: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent-grad);
+}
+
 .query {
   width: 100%;
   resize: vertical;
@@ -372,10 +437,6 @@ onBeforeUnmount(stopFunLines)
   color: #fff;
   background: var(--accent-grad);
   box-shadow: var(--shadow);
-  transition: opacity 0.18s, transform 0.1s;
-}
-.run:active {
-  transform: scale(0.98);
 }
 .run:disabled {
   opacity: 0.45;
@@ -390,7 +451,6 @@ onBeforeUnmount(stopFunLines)
 }
 .ghost:disabled {
   opacity: 0.45;
-  cursor: not-allowed;
 }
 
 .thinking {
@@ -422,59 +482,6 @@ onBeforeUnmount(stopFunLines)
   color: var(--danger);
   background: rgba(255, 107, 107, 0.1);
   border: 1px solid rgba(255, 107, 107, 0.3);
-}
-
-.result {
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  overflow: hidden;
-}
-.result-head {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-dim);
-  border-bottom: 1px solid var(--border);
-  background: var(--panel-strong);
-}
-.dl-btn {
-  flex-shrink: 0;
-  padding: 5px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #fff;
-  background: var(--accent-grad);
-  max-width: 55%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.dl-btn:hover {
-  opacity: 0.9;
-}
-.result-body {
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 14px 14px 28px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  font-size: 14px;
-  line-height: 1.65;
-  color: var(--text);
-  white-space: pre-wrap;
-  word-break: break-word;
-  -webkit-overflow-scrolling: touch;
 }
 
 @keyframes spin {
