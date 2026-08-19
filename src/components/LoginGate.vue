@@ -233,7 +233,7 @@ function switchMode(m) {
   position: absolute;
   border-radius: 50%;
   filter: blur(48px);
-  opacity: 0.5;
+  opacity: 0.72;
 }
 .o1 {
   width: 360px;
@@ -248,7 +248,7 @@ function switchMode(m) {
   height: 380px;
   right: 8%;
   bottom: 10%;
-  background: radial-gradient(circle, rgba(186, 150, 255, 0.45), transparent 70%);
+  background: radial-gradient(circle, rgba(201, 168, 255, 0.55), transparent 70%);
   animation: drift 20s ease-in-out infinite reverse;
 }
 .o3 {
@@ -307,12 +307,12 @@ function switchMode(m) {
 .ring.r1 {
   inset: -8px;
   border: 1px solid rgba(255, 200, 220, 0.55);
-  box-shadow: 0 0 28px rgba(255, 143, 177, 0.35);
+  box-shadow: 0 0 28px rgba(255, 143, 180, 0.35);
   animation: breathe 5.5s ease-in-out infinite;
 }
 .ring.r2 {
   inset: -18px;
-  border: 1px solid rgba(200, 170, 255, 0.35);
+  border: 1px solid rgba(200, 170, 180, 0.28);
   animation: breathe 7s ease-in-out infinite reverse;
 }
 .portrait {
@@ -387,9 +387,9 @@ function switchMode(m) {
   padding: 14px 36px 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 200, 220, 0.5);
-  background: linear-gradient(135deg, #ff8fb1, #a78bfa);
+  background: linear-gradient(135deg, #ff8fb4, #c9a8ff);
   color: #fff;
-  box-shadow: 0 10px 28px rgba(167, 139, 250, 0.4);
+  box-shadow: 0 10px 28px rgba(255, 143, 180, 0.35);
   cursor: pointer;
   transition: transform 0.18s ease, filter 0.18s ease;
 }
@@ -398,13 +398,15 @@ function switchMode(m) {
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0.14em;
+  color: #fff;
 }
 .enter small {
   font-family: var(--myth-serif);
   font-size: 11px;
   letter-spacing: 0.18em;
-  opacity: 0.9;
+  opacity: 0.75;
   font-style: italic;
+  color: #fff;
 }
 .enter:hover {
   transform: translateY(-2px);
@@ -528,7 +530,7 @@ label small {
   border-radius: 12px;
   background: var(--accent-grad);
   color: #fff;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 15px;
   margin-top: 4px;
   cursor: pointer;

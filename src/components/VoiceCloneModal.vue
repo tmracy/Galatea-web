@@ -1,6 +1,7 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { cloneVoice } from '../api/index.js'
+import Icon from './Icon.vue'
 
 const props = defineProps({
   sessionId: { type: String, default: 'web' },
@@ -57,14 +58,23 @@ function close() {
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
   emit('close')
 }
+
+function onKey(e) {
+  if (e.key === 'Escape' && !cloning.value) close()
+}
+
+onMounted(() => window.addEventListener('keydown', onKey))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
   <div class="overlay" @click.self="close">
-    <div class="modal glass">
+    <div class="modal glass" role="dialog" aria-modal="true" aria-labelledby="clone-title">
       <header class="modal-head">
-        <h3>克隆音色</h3>
-        <button class="x" @click="close">✕</button>
+        <h3 id="clone-title">克隆音色</h3>
+        <button class="x" type="button" aria-label="关闭" @click="close">
+          <Icon name="close" :size="16" />
+        </button>
       </header>
 
       <p class="hint">上传一段清晰的人声音频（建议 10~30 秒、无背景噪音），克隆后 AI 会用这个声音说话。</p>
@@ -84,12 +94,12 @@ function close() {
           @change="onFile"
         />
         <template v-if="!file">
-          <div class="drop-icon">🎤</div>
+          <div class="drop-icon"><Icon name="mic" :size="28" /></div>
           <p>点击选择，或把音频拖到这里</p>
           <small>支持 mp3 / m4a / wav / aac</small>
         </template>
         <template v-else>
-          <div class="drop-icon">🎧</div>
+          <div class="drop-icon"><Icon name="headphones" :size="28" /></div>
           <p class="fname">{{ fileName }}</p>
           <small>点击可重新选择</small>
         </template>
@@ -135,14 +145,18 @@ function close() {
   margin-bottom: 12px;
 }
 .modal-head h3 {
-  font-size: 17px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
 }
 .x {
-  font-size: 16px;
+  display: grid;
+  place-items: center;
   opacity: 0.7;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
+  color: var(--text-dim);
 }
 .x:hover {
   opacity: 1;
@@ -164,15 +178,17 @@ function close() {
 }
 .drop:hover {
   border-color: var(--accent-2);
-  background: rgba(167, 139, 250, 0.06);
+  background: rgba(255, 143, 180, 0.06);
 }
 .drop.filled {
   border-color: var(--accent);
-  background: rgba(255, 143, 177, 0.08);
+  background: rgba(255, 143, 180, 0.08);
 }
 .drop-icon {
-  font-size: 34px;
-  margin-bottom: 8px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 8px;
+  color: var(--gold);
 }
 .drop p {
   font-size: 14px;

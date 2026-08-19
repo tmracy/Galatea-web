@@ -2,6 +2,8 @@
 import { ref, onMounted, watch } from 'vue'
 import { listSkills, uploadSkill } from '../api/index.js'
 import { parseFrontmatter } from '../utils/frontmatter.js'
+import { skillDisplayName } from '../utils/skillName.js'
+import Icon from './Icon.vue'
 
 const props = defineProps({
   sessionId: { type: String, default: '' },
@@ -21,7 +23,7 @@ async function refreshSkills() {
     return
   }
   const list = await listSkills(props.sessionId)
-  skills.value = list
+  skills.value = list.map((s) => ({ ...s, name: skillDisplayName(s) }))
   const active = list.find((s) => s.active) || list[0]
   if (active) emit('activate', active)
 }
@@ -96,7 +98,7 @@ async function confirmUpload() {
     skills.value = [
       {
         id: saved.id || props.sessionId,
-        name: saved.name || preview.value.name,
+        name: skillDisplayName({ ...saved, name: saved.name || preview.value.name }),
         description: saved.description || preview.value.description,
         active: true,
         builtin: false,
@@ -124,13 +126,16 @@ function activate(id) {
       <div class="logo">G</div>
       <div>
         <h1>Galatea</h1>
-        <p class="user-id">用户：{{ sessionId }}</p>
+        <p class="user-id" :title="sessionId">已登录</p>
       </div>
     </div>
 
     <div class="section-title">
       <span>人设</span>
-      <button class="add" :disabled="uploading" @click="pickFile">＋ 上传</button>
+      <button class="add" :disabled="uploading" @click="pickFile">
+        <Icon name="plus" :size="14" />
+        上传
+      </button>
       <input
         ref="fileInput"
         type="file"
@@ -159,7 +164,7 @@ function activate(id) {
 
     <div class="list">
       <p v-if="loading" class="muted">加载中…</p>
-      <p v-else-if="!skills.length" class="muted">暂无人设。默认明日香会在首次聊天时自动就绪，也可点「上传」自定义 skill.md。</p>
+      <p v-else-if="!skills.length" class="muted">还没有专属伽拉忒亚。上传一份人设，或先和明日香聊。</p>
       <button
         v-for="s in skills"
         :key="s.id"
@@ -170,14 +175,17 @@ function activate(id) {
         <div class="skill-top">
           <span class="skill-name">{{ s.name }}</span>
           <span v-if="s.builtin" class="badge">内置</span>
-          <span v-if="s.active" class="check">●</span>
+          <span v-if="s.active" class="check"><Icon name="check" :size="13" /></span>
         </div>
         <p class="skill-desc">{{ s.description }}</p>
       </button>
     </div>
 
     <div class="foot">
-      <button class="logout" type="button" @click="emit('logout')">退出登录</button>
+      <button class="logout" type="button" aria-label="退出登录" @click="emit('logout')">
+        <Icon name="logout" :size="15" />
+        退出登录
+      </button>
     </div>
   </aside>
 </template>
@@ -203,17 +211,24 @@ function activate(id) {
   background: var(--accent-grad);
   display: grid;
   place-items: center;
-  font-weight: 800;
-  font-size: 22px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 24px;
   color: #fff;
 }
 .brand h1 {
-  font-size: 18px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
 }
 .brand p.user-id {
-  font-size: 12px;
-  color: var(--accent);
+  font-size: 11px;
+  color: var(--gold);
   font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .section-title {
@@ -226,10 +241,13 @@ function activate(id) {
   letter-spacing: 0.04em;
 }
 .add {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 12px;
   padding: 5px 10px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--border);
   color: var(--text);
 }
@@ -252,7 +270,7 @@ function activate(id) {
   border: 1px dashed var(--accent-2);
   border-radius: 12px;
   padding: 12px;
-  background: rgba(167, 139, 250, 0.08);
+  background: rgba(255, 143, 180, 0.1);
 }
 .preview-head {
   display: flex;
@@ -264,8 +282,9 @@ function activate(id) {
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 6px;
-  background: var(--accent-2);
+  background: var(--gold);
   color: #fff;
+  font-weight: 700;
 }
 .desc {
   font-size: 12px;
@@ -319,8 +338,8 @@ function activate(id) {
   background: rgba(255, 255, 255, 0.1);
 }
 .skill.active {
-  border-color: var(--accent);
-  background: rgba(255, 143, 177, 0.12);
+  border-color: rgba(255, 143, 180, 0.55);
+  background: rgba(255, 143, 180, 0.1);
 }
 .skill-top {
   display: flex;
@@ -340,8 +359,8 @@ function activate(id) {
 }
 .check {
   margin-left: auto;
-  color: var(--accent);
-  font-size: 10px;
+  color: var(--gold);
+  display: inline-flex;
 }
 .skill-desc {
   margin-top: 5px;
@@ -363,12 +382,16 @@ function activate(id) {
 }
 .logout {
   width: 100%;
-  height: 36px;
-  border-radius: 10px;
+  height: var(--control-h);
+  border-radius: var(--radius-sm);
   font-size: 13px;
   color: var(--text-dim);
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 .logout:hover {
   background: rgba(255, 255, 255, 0.12);
@@ -377,6 +400,47 @@ function activate(id) {
 .muted {
   color: var(--text-faint);
   font-size: 12px;
+  line-height: 1.55;
+}
+
+@media (max-width: 880px) {
+  .sidebar {
+    flex-direction: row;
+    align-items: center;
+    height: auto;
+    padding: 10px 12px;
+    gap: 12px;
+  }
+  .brand {
+    flex-shrink: 0;
+  }
+  .brand h1 {
+    font-size: 20px;
+  }
+  .section-title span {
+    display: none;
+  }
+  .list {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .skill {
+    min-width: 148px;
+    padding: 8px 10px;
+  }
+  .skill-desc {
+    -webkit-line-clamp: 1;
+  }
+  .foot {
+    flex-shrink: 0;
+  }
+  .logout {
+    width: auto;
+    padding: 0 12px;
+    font-size: 0;
+    gap: 0;
+  }
 }
 code {
   background: rgba(255, 255, 255, 0.1);

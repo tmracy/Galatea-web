@@ -7,12 +7,15 @@ import EmotionPanel from './components/EmotionPanel.vue'
 import ChatPanel from './components/ChatPanel.vue'
 import LoginGate from './components/LoginGate.vue'
 import { useAuth } from './composables/useAuth.js'
+import { skillDisplayName } from './utils/skillName.js'
 
 const speaking = ref(false)
 const activeSkill = ref({ id: 'hh', name: '明日香' })
 const middleMode = ref('companion') // companion | agent | emotion
 
 const { isLoggedIn, currentSessionId, logout } = useAuth()
+
+const displaySkillName = computed(() => skillDisplayName(activeSkill.value))
 
 // 用户 session_id（记忆/数据隔离）；与 Skill 人设 id 分开
 const sessionId = computed(() => currentSessionId.value)
@@ -33,7 +36,7 @@ watch(middleMode, (m) => {
 <template>
   <LoginGate v-if="!isLoggedIn" @success="() => {}" />
 
-  <div v-else class="app">
+  <div v-else class="app" :class="{ 'focus-stage': middleMode !== 'companion' }">
     <SkillSidebar
       class="col-skill"
       :session-id="sessionId"
@@ -68,7 +71,7 @@ watch(middleMode, (m) => {
         class="stage-pane"
         :class="{ off: middleMode !== 'companion' }"
         :speaking="speaking"
-        :name="activeSkill.name"
+        :name="displaySkillName"
       />
       <AgentPanel
         v-show="middleMode === 'agent'"
@@ -82,8 +85,13 @@ watch(middleMode, (m) => {
       />
     </main>
 
-    <section class="col-chat">
-      <ChatPanel :session-id="sessionId" @speaking="(v) => (speaking = v)" />
+    <section v-show="middleMode === 'companion'" class="col-chat">
+      <ChatPanel
+        :session-id="sessionId"
+        :skill-name="displaySkillName"
+        :active="middleMode === 'companion'"
+        @speaking="(v) => (speaking = v)"
+      />
     </section>
   </div>
 </template>
@@ -93,9 +101,9 @@ watch(middleMode, (m) => {
   height: 100vh;
   width: 100vw;
   display: grid;
-  grid-template-columns: 280px 1fr 420px;
-  gap: 16px;
-  padding: 16px;
+  grid-template-columns: 268px 1fr 400px;
+  gap: 14px;
+  padding: 14px;
   overflow: hidden;
   box-sizing: border-box;
 }
@@ -125,24 +133,26 @@ watch(middleMode, (m) => {
   top: 14px;
   left: 14px;
   display: flex;
-  gap: 4px;
-  padding: 4px;
+  gap: 3px;
+  padding: 3px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(12, 8, 10, 0.45);
   border: 1px solid var(--border);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(14px);
 }
 .mode-switch button {
-  padding: 6px 12px;
+  padding: 7px 13px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
+  letter-spacing: 0.04em;
   color: var(--text-dim);
-  transition: color 0.18s, background 0.18s;
+  transition: color 0.18s, background 0.18s, box-shadow 0.18s;
 }
 .mode-switch button.on {
   color: #fff;
   background: var(--accent-grad);
+  box-shadow: 0 4px 16px rgba(255, 143, 180, 0.35);
 }
 .col-chat {
   min-width: 0;
@@ -152,18 +162,33 @@ watch(middleMode, (m) => {
   flex-direction: column;
 }
 
+.app.focus-stage {
+  grid-template-columns: 268px 1fr;
+}
+
 @media (max-width: 1100px) {
   .app {
-    grid-template-columns: 240px 1fr 360px;
+    grid-template-columns: 232px 1fr 340px;
+    gap: 12px;
+    padding: 12px;
+  }
+  .app.focus-stage {
+    grid-template-columns: 232px 1fr;
   }
 }
 @media (max-width: 880px) {
   .app {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 240px 1fr;
+    grid-template-rows: auto minmax(180px, 30vh) minmax(0, 1fr);
+    gap: 10px;
+    padding: 10px;
     height: 100vh;
     min-height: 0;
     overflow: hidden;
+  }
+  .app.focus-stage {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
   }
   .col-chat {
     min-height: 0;

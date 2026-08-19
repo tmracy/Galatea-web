@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, nextTick, onBeforeUnmount } from 'vue'
 import { uploadTaskFolder, runSimpleAgent, downloadAgentFile, clearAgentChat } from '../api/index.js'
+import Icon from './Icon.vue'
 
 const props = defineProps({
   sessionId: { type: String, default: 'web' },
@@ -146,7 +147,7 @@ onBeforeUnmount(stopFunLines)
     <div class="inner" :class="{ 'has-chat': hasChat }">
       <header class="head">
         <div class="title">
-          <span class="badge">⚡</span>
+          <span class="badge"><Icon name="zap" :size="18" /></span>
           <div>
             <h2>生产力助手</h2>
             <p>上传文件夹后可多轮追问，同一会话会记住上下文。</p>
@@ -164,7 +165,7 @@ onBeforeUnmount(stopFunLines)
           @change="onFolderPick"
         />
         <div class="drop-body">
-          <span class="drop-icon">📁</span>
+          <span class="drop-icon"><Icon name="folder" :size="26" /></span>
           <template v-if="uploading">
             <strong>正在上传文件夹…</strong>
           </template>
@@ -192,7 +193,8 @@ onBeforeUnmount(stopFunLines)
             class="dl-btn"
             @click="downloadReport(m.download)"
           >
-            ↓ 下载 {{ m.download }}
+            <Icon name="download" :size="13" />
+            下载 {{ m.download }}
           </button>
         </div>
       </div>
@@ -253,14 +255,14 @@ onBeforeUnmount(stopFunLines)
   height: 260px;
   left: -40px;
   top: -30px;
-  background: radial-gradient(circle, rgba(167, 139, 250, 0.6), transparent 70%);
+  background: radial-gradient(circle, rgba(201, 168, 255, 0.55), transparent 70%);
 }
 .blob.b2 {
   width: 240px;
   height: 240px;
   right: -30px;
   bottom: -20px;
-  background: radial-gradient(circle, rgba(255, 143, 177, 0.5), transparent 70%);
+  background: radial-gradient(circle, rgba(255, 143, 180, 0.45), transparent 70%);
 }
 
 .inner {
@@ -303,12 +305,13 @@ onBeforeUnmount(stopFunLines)
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  color: #fff;
   box-shadow: var(--shadow);
 }
 .head h2 {
-  font-size: 18px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
 }
 .head p {
   font-size: 13px;
@@ -351,7 +354,8 @@ onBeforeUnmount(stopFunLines)
   text-align: center;
 }
 .drop-icon {
-  font-size: 28px;
+  color: var(--gold);
+  margin-bottom: 4px;
 }
 .drop-body strong {
   font-size: 14px;
@@ -402,6 +406,9 @@ onBeforeUnmount(stopFunLines)
   font-weight: 600;
   color: #fff;
   background: var(--accent-grad);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .query {
@@ -467,7 +474,7 @@ onBeforeUnmount(stopFunLines)
   height: 16px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.2);
-  border-top-color: var(--accent);
+  border-top-color: var(--gold);
   animation: spin 0.8s linear infinite;
 }
 .fun {

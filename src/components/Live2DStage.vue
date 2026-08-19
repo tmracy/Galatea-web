@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { audioLevel } from '../composables/useVoice.js'
+import Icon from './Icon.vue'
 
 const props = defineProps({
   speaking: { type: Boolean, default: false },
@@ -214,7 +215,7 @@ onMounted(async () => {
       mobileDisplay: true,
       menus: { disable: true },
       statusBar: { disable: true },
-      primaryColor: '#ff8fb1',
+      primaryColor: '#ff8fb4',
       tips: { idleTips: { message: [] }, welcomeTips: { message: {} } }, // 关掉空闲/欢迎气泡
       models: MODELS,
     })
@@ -290,7 +291,8 @@ watch(
         title="换一个形象"
         @click.stop="switchModel"
       >
-        {{ switching ? '切换中…' : '🔄 换形象' }}
+        <Icon name="refresh" :size="13" />
+        {{ switching ? '切换中…' : '换形象' }}
       </button>
       <button
         v-if="hasClothes"
@@ -299,7 +301,8 @@ watch(
         title="换一套装扮（同一角色）"
         @click.stop="switchClothes"
       >
-        👗 换装
+        <Icon name="shirt" :size="13" />
+        换装
       </button>
     </div>
 
@@ -321,7 +324,7 @@ watch(
     </div>
 
     <div v-if="status === 'loading'" class="hint">形象加载中…</div>
-    <div v-else-if="status === 'ready'" class="poke-hint">戳一下我呀 ✨</div>
+    <div v-else-if="status === 'ready'" class="poke-hint">戳一下我</div>
   </div>
 </template>
 
@@ -357,7 +360,7 @@ watch(
   height: 280px;
   left: -40px;
   top: 6%;
-  background: radial-gradient(circle, rgba(255, 143, 177, 0.6), transparent 70%);
+  background: radial-gradient(circle, rgba(255, 143, 180, 0.55), transparent 70%);
   animation: float1 14s ease-in-out infinite;
 }
 .blob.b2 {
@@ -365,7 +368,7 @@ watch(
   height: 240px;
   right: -30px;
   top: 28%;
-  background: radial-gradient(circle, rgba(167, 139, 250, 0.55), transparent 70%);
+  background: radial-gradient(circle, rgba(201, 168, 255, 0.5), transparent 70%);
   animation: float2 18s ease-in-out infinite;
 }
 .blob.b3 {
@@ -373,7 +376,7 @@ watch(
   height: 200px;
   left: 30%;
   bottom: -20px;
-  background: radial-gradient(circle, rgba(123, 224, 164, 0.4), transparent 70%);
+  background: radial-gradient(circle, rgba(255, 190, 210, 0.38), transparent 70%);
   animation: float3 16s ease-in-out infinite;
 }
 .stage.talking .blob {
@@ -388,7 +391,7 @@ watch(
   height: 6px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 0 8px rgba(255, 143, 177, 0.9);
+  box-shadow: 0 0 8px rgba(255, 143, 180, 0.9);
   opacity: 0;
   animation: rise 7s linear infinite;
 }
@@ -423,7 +426,7 @@ watch(
   position: absolute;
   inset: -30px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 143, 177, 0.35), transparent 65%);
+  background: radial-gradient(circle, rgba(255, 143, 180, 0.35), transparent 65%);
   filter: blur(8px);
   animation: breathe 4s ease-in-out infinite;
 }
@@ -433,7 +436,7 @@ watch(
   height: 170px;
   border-radius: 50%;
   background: var(--accent-grad);
-  box-shadow: 0 20px 60px rgba(167, 139, 250, 0.45), inset 0 4px 20px rgba(255, 255, 255, 0.35);
+  box-shadow: 0 20px 60px rgba(255, 143, 180, 0.35), inset 0 4px 20px rgba(255, 255, 255, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -458,7 +461,7 @@ watch(
   margin: auto;
   width: 170px;
   height: 170px;
-  border: 2px solid rgba(255, 143, 177, 0.5);
+  border: 2px solid rgba(255, 143, 180, 0.5);
   border-radius: 50%;
   animation: ripple 1.6s ease-out infinite;
 }
@@ -477,16 +480,21 @@ watch(
   transform: translateX(-50%);
   padding: 8px 16px;
   border-radius: 999px;
-  font-size: 14px;
+  font-family: var(--font-display);
+  font-size: 16px;
   font-weight: 600;
+  letter-spacing: 0.04em;
   display: flex;
   align-items: center;
   gap: 8px;
   white-space: nowrap;
 }
 .nameplate small {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.08em;
   color: var(--text-dim);
-  font-weight: 400;
+  font-weight: 500;
 }
 .dot {
   width: 8px;
@@ -523,6 +531,9 @@ watch(
   color: var(--text);
   border: 1px solid var(--border);
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   transition: opacity 0.18s, transform 0.1s, background 0.18s;
 }
 .switch-btn:hover {

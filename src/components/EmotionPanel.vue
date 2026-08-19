@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, nextTick, onBeforeUnmount } from 'vue'
 import MessageBubble from './MessageBubble.vue'
+import Icon from './Icon.vue'
 import { sendEmotionChat, synthesizeTTS, clearEmotionChat } from '../api/index.js'
 import { useVoiceOutput } from '../composables/useVoice.js'
 
@@ -140,7 +141,7 @@ onBeforeUnmount(() => {
     <div class="inner">
       <header class="head">
         <div class="title">
-          <span class="badge">💗</span>
+          <span class="badge"><Icon name="heart" :size="18" /></span>
           <div>
             <h2>情绪陪伴</h2>
             <p>深度情绪识别 · 策略化回应</p>
@@ -149,9 +150,10 @@ onBeforeUnmount(() => {
         <button
           class="mute-btn"
           :title="voiceOut.muted.value ? '取消静音' : '静音语音播报'"
+          :aria-label="voiceOut.muted.value ? '取消静音' : '静音'"
           @click="voiceOut.toggleMute()"
         >
-          {{ voiceOut.muted.value ? '🔇' : '🔊' }}
+          <Icon :name="voiceOut.muted.value ? 'mute' : 'volume'" :size="16" />
         </button>
       </header>
 
@@ -247,7 +249,7 @@ onBeforeUnmount(() => {
   height: 280px;
   left: -60px;
   top: 10%;
-  background: radial-gradient(circle, rgba(255, 143, 177, 0.65), transparent 70%);
+  background: radial-gradient(circle, rgba(255, 143, 180, 0.6), transparent 70%);
   animation: drift 12s ease-in-out infinite;
 }
 .blob.b2 {
@@ -255,7 +257,7 @@ onBeforeUnmount(() => {
   height: 220px;
   right: -40px;
   top: 35%;
-  background: radial-gradient(circle, rgba(255, 180, 162, 0.5), transparent 70%);
+  background: radial-gradient(circle, rgba(201, 168, 255, 0.5), transparent 70%);
   animation: drift 14s ease-in-out infinite reverse;
 }
 .blob.b3 {
@@ -263,7 +265,7 @@ onBeforeUnmount(() => {
   height: 200px;
   left: 30%;
   bottom: -50px;
-  background: radial-gradient(circle, rgba(167, 139, 250, 0.35), transparent 70%);
+  background: radial-gradient(circle, rgba(255, 143, 180, 0.32), transparent 70%);
   animation: drift 16s ease-in-out infinite 2s;
 }
 @keyframes drift {
@@ -305,10 +307,12 @@ onBeforeUnmount(() => {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  font-size: 17px;
+  display: grid;
+  place-items: center;
+  color: var(--text-dim);
   background: var(--panel);
   border: 1px solid var(--border);
-  transition: background 0.18s;
+  transition: background 0.18s, color 0.18s;
 }
 .mute-btn:hover {
   background: var(--panel-strong);
@@ -318,16 +322,17 @@ onBeforeUnmount(() => {
   height: 42px;
   flex: 0 0 42px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #ff9eb8 0%, #ff6b9b 100%);
+  background: linear-gradient(135deg, #ff8fb4 0%, #f06b9b 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-  box-shadow: 0 8px 28px rgba(255, 107, 155, 0.4);
+  color: #fff;
+  box-shadow: 0 8px 28px rgba(240, 107, 155, 0.35);
 }
 .head h2 {
-  font-size: 18px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
 }
 .head p {
   font-size: 12px;
@@ -343,8 +348,8 @@ onBeforeUnmount(() => {
   gap: 8px;
   padding: 10px 14px;
   border-radius: 999px;
-  background: rgba(255, 143, 177, 0.08);
-  border: 1px solid rgba(255, 143, 177, 0.2);
+  background: rgba(255, 143, 180, 0.08);
+  border: 1px solid rgba(255, 143, 180, 0.22);
 }
 .pipe-item {
   display: flex;
@@ -359,16 +364,16 @@ onBeforeUnmount(() => {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #ff8fb1;
-  box-shadow: 0 0 8px rgba(255, 143, 177, 0.8);
+  background: #ff8fb4;
+  box-shadow: 0 0 8px rgba(255, 143, 180, 0.8);
 }
 .dot.d2 {
-  background: #ffb4a2;
-  box-shadow: 0 0 8px rgba(255, 180, 162, 0.7);
+  background: #ffc4ae;
+  box-shadow: 0 0 8px rgba(255, 143, 180, 0.7);
 }
 .dot.d3 {
-  background: #a78bfa;
-  box-shadow: 0 0 8px rgba(167, 139, 250, 0.6);
+  background: #c9a8ff;
+  box-shadow: 0 0 8px rgba(201, 168, 255, 0.7);
 }
 .pipe-arrow {
   font-size: 10px;
@@ -393,8 +398,8 @@ onBeforeUnmount(() => {
   gap: 10px;
   padding: 10px 14px;
   border-radius: 14px;
-  background: rgba(255, 143, 177, 0.08);
-  border: 1px solid rgba(255, 143, 177, 0.22);
+  background: rgba(255, 143, 180, 0.08);
+  border: 1px solid rgba(255, 143, 180, 0.22);
 }
 .pulse {
   width: 10px;
@@ -452,8 +457,8 @@ onBeforeUnmount(() => {
 }
 .chip:hover:not(:disabled) {
   color: var(--text);
-  border-color: rgba(255, 143, 177, 0.5);
-  background: rgba(255, 143, 177, 0.1);
+  border-color: rgba(255, 143, 180, 0.5);
+  background: rgba(255, 143, 180, 0.1);
 }
 .chip:disabled {
   opacity: 0.5;
@@ -481,8 +486,8 @@ onBeforeUnmount(() => {
   outline: none;
 }
 .query:focus {
-  border-color: rgba(255, 143, 177, 0.6);
-  box-shadow: 0 0 0 3px rgba(255, 143, 177, 0.12);
+  border-color: rgba(255, 143, 180, 0.6);
+  box-shadow: 0 0 0 3px rgba(255, 143, 180, 0.12);
 }
 .query:disabled {
   opacity: 0.6;
@@ -499,8 +504,8 @@ onBeforeUnmount(() => {
   font-size: 14px;
   font-weight: 700;
   color: #fff;
-  background: linear-gradient(135deg, #ff9eb8 0%, #ff6b9b 55%, #a78bfa 100%);
-  box-shadow: 0 8px 24px rgba(255, 107, 155, 0.35);
+  background: linear-gradient(135deg, #ff8fb4 0%, #f06b9b 55%, #c9a8ff 100%);
+  box-shadow: 0 8px 24px rgba(240, 107, 155, 0.32);
   transition: opacity 0.18s, transform 0.1s;
 }
 .run:active:not(:disabled) {
