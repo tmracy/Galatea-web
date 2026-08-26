@@ -32,6 +32,12 @@ npm run build
 npm run preview
 ```
 
+## 生产部署
+
+`npm run build` 得到 `dist/`，用 nginx 等静态服务器托管，并把 `/api`、`/agent`、`/emotion` 反代到后端。不要设 `VITE_API_BASE`（相对路径 + 反代，避免跨域）。
+
+同机部署时，安全组只放行前端端口（如 80），不要把后端端口对公网开放。
+
 ## 环境变量
 
 | 变量 | 说明 |
