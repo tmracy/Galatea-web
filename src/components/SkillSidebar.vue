@@ -8,7 +8,7 @@ import Icon from './Icon.vue'
 const props = defineProps({
   sessionId: { type: String, default: '' },
 })
-const emit = defineEmits(['activate', 'logout'])
+const emit = defineEmits(['activate', 'logout', 'guide'])
 
 const skills = ref([])
 const loading = ref(true)
@@ -182,6 +182,10 @@ function activate(id) {
     </div>
 
     <div class="foot">
+      <button class="logout" type="button" aria-label="使用指南" @click="emit('guide')">
+        <Icon name="book" :size="15" />
+        使用指南
+      </button>
       <button class="logout" type="button" aria-label="退出登录" @click="emit('logout')">
         <Icon name="logout" :size="15" />
         退出登录

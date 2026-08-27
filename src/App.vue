@@ -6,14 +6,32 @@ import AgentPanel from './components/AgentPanel.vue'
 import EmotionPanel from './components/EmotionPanel.vue'
 import ChatPanel from './components/ChatPanel.vue'
 import LoginGate from './components/LoginGate.vue'
+import UserGuide from './components/UserGuide.vue'
+import Icon from './components/Icon.vue'
 import { useAuth } from './composables/useAuth.js'
 import { skillDisplayName } from './utils/skillName.js'
+
+const GUIDE_KEY = 'galatea_guide_seen'
 
 const speaking = ref(false)
 const activeSkill = ref({ id: 'hh', name: '明日香' })
 const middleMode = ref('companion') // companion | agent | emotion
+const guideOpen = ref(false)
 
 const { isLoggedIn, currentSessionId, logout } = useAuth()
+
+watch(isLoggedIn, (on) => {
+  if (on && !localStorage.getItem(GUIDE_KEY)) guideOpen.value = true
+}, { immediate: true })
+
+function openGuide() {
+  guideOpen.value = true
+}
+
+function closeGuide() {
+  guideOpen.value = false
+  localStorage.setItem(GUIDE_KEY, '1')
+}
 
 const displaySkillName = computed(() => skillDisplayName(activeSkill.value))
 
@@ -34,17 +52,20 @@ watch(middleMode, (m) => {
 </script>
 
 <template>
-  <LoginGate v-if="!isLoggedIn" @success="() => {}" />
-
+  <LoginGate v-if="!isLoggedIn" @success="() => {}" @guide="openGuide" />
   <div v-else class="app" :class="{ 'focus-stage': middleMode !== 'companion' }">
     <SkillSidebar
       class="col-skill"
       :session-id="sessionId"
       @activate="onActivate"
       @logout="logout"
+      @guide="openGuide"
     />
 
     <main class="col-stage glass">
+      <button class="guide-fab" type="button" title="使用指南" aria-label="打开使用指南" @click="openGuide">
+        <Icon name="book" :size="16" />
+      </button>
       <div class="mode-switch">
         <button
           :class="{ on: middleMode === 'companion' }"
@@ -94,6 +115,7 @@ watch(middleMode, (m) => {
       />
     </section>
   </div>
+  <UserGuide :open="guideOpen" @close="closeGuide" />
 </template>
 
 <style scoped>
@@ -126,6 +148,27 @@ watch(middleMode, (m) => {
 .stage-pane.off {
   visibility: hidden;
   pointer-events: none;
+}
+.guide-fab {
+  position: absolute;
+  z-index: 6;
+  top: 14px;
+  right: 14px;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: var(--text-dim);
+  background: rgba(12, 8, 10, 0.45);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(14px);
+  transition: color 0.18s, background 0.18s, box-shadow 0.18s;
+}
+.guide-fab:hover {
+  color: #fff;
+  background: rgba(255, 143, 180, 0.22);
+  box-shadow: 0 6px 18px rgba(255, 143, 180, 0.28);
 }
 .mode-switch {
   position: absolute;

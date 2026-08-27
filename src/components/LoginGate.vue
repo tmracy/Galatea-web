@@ -3,7 +3,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useAuth } from '../composables/useAuth.js'
 import { checkSessionId } from '../api/index.js'
 
-const emit = defineEmits(['success'])
+const emit = defineEmits(['success', 'guide'])
 
 // myth：神话引言 → auth：登录/注册
 const phase = ref('myth')
@@ -131,6 +131,7 @@ function switchMode(m) {
           <span>赋予她声音</span>
           <small>Enter · 进入</small>
         </button>
+        <button type="button" class="guide-link" @click="emit('guide')">先看看怎么用</button>
       </div>
     </section>
 
@@ -143,6 +144,7 @@ function switchMode(m) {
       </div>
       <h2 class="auth-title">Galatea</h2>
       <p class="sub">语音 AI 伴侣 · 请先登录或注册</p>
+      <button type="button" class="guide-link auth" @click="emit('guide')">使用指南</button>
 
       <div class="tabs">
         <button type="button" :class="{ active: mode === 'login' }" @click="switchMode('login')">
@@ -411,6 +413,27 @@ function switchMode(m) {
 .enter:hover {
   transform: translateY(-2px);
   filter: brightness(1.06);
+}
+.guide-link {
+  display: block;
+  margin: 18px auto 0;
+  background: none;
+  border: none;
+  font-family: var(--myth-cn);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  color: rgba(255, 232, 240, 0.72);
+  cursor: pointer;
+  text-decoration: none;
+}
+.guide-link:hover {
+  color: #fff;
+}
+.guide-link.auth {
+  margin: 8px 0 0;
+  font-family: var(--font-ui);
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
 }
 
 /* —— Auth —— */
