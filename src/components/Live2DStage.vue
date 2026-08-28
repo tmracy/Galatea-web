@@ -269,7 +269,7 @@ watch(
 </script>
 
 <template>
-  <div class="stage" :class="{ talking: speaking }" @click="onStageClick">
+    <div class="stage" :class="{ talking: speaking }" @click="onStageClick">
     <!-- 柔光浮动背景：填补空白、即使 Live2D 没加载也有动效 -->
     <div class="ambient" aria-hidden="true">
       <span class="blob b1"></span>

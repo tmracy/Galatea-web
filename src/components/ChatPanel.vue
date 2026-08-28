@@ -1,5 +1,5 @@
 <script setup>
-import { ref, nextTick, watch, onMounted, computed } from 'vue'
+import { ref, nextTick, watch, onMounted, onBeforeUnmount, computed } from 'vue'
 import MessageBubble from './MessageBubble.vue'
 import VoiceCloneModal from './VoiceCloneModal.vue'
 import Icon from './Icon.vue'
@@ -24,7 +24,16 @@ const archiving = ref(false)
 const confirmNew = ref(false)
 const toast = ref('')
 const listRef = ref(null)
+const inputRef = ref(null)
+const flyGlyphs = ref([])
+const ingestGhost = ref(null)
 let toastTimer = null
+let flyToken = 0
+let flyTimers = []
+
+const FLY_STAGGER_MS = 200
+const FLY_DURATION_MS = 520
+const FLY_MAX_CHARS = 40
 
 // 当前使用的克隆音色（Data/ 下的 *_voice_id.json 文件名）；null 用后端默认音色
 const voice = ref('赵丽颖')
@@ -81,6 +90,7 @@ watch(
       voiceOut.stop()
       if (voiceIn.listening.value) voiceIn.stop()
       confirmNew.value = false
+      abortFly()
     }
   },
 )
@@ -91,32 +101,157 @@ function scrollToBottom() {
   })
 }
 
+function prefersReducedMotion() {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function splitGlyphs(text) {
+  if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+    return [...new Intl.Segmenter('zh', { granularity: 'grapheme' }).segment(text)].map((s) => s.segment)
+  }
+  return Array.from(text)
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function abortFly() {
+  flyToken += 1
+  flyGlyphs.value = []
+  ingestGhost.value = null
+  for (const t of flyTimers) window.clearTimeout(t)
+  flyTimers = []
+}
+
+function ingestCaretPoint() {
+  const el = listRef.value?.querySelector('[data-user-ingest]')
+  if (!el) return null
+  const r = el.getBoundingClientRect()
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
+}
+
+function afterFly(ms, fn) {
+  const t = window.setTimeout(() => {
+    flyTimers = flyTimers.filter((x) => x !== t)
+    fn()
+  }, ms)
+  flyTimers.push(t)
+}
+
+async function flyIntoUserBubble(userMsg, full, token) {
+  if (!userMsg) return
+  if (prefersReducedMotion() || !full) {
+    userMsg.content = full
+    userMsg.ingesting = false
+    return
+  }
+
+  const chars = splitGlyphs(full)
+  const flyCount = Math.min(chars.length, FLY_MAX_CHARS)
+  ingestGhost.value = full
+  await nextTick()
+  scrollToBottom()
+  await nextTick()
+
+  const origin = inputRef.value?.getBoundingClientRect()
+  if (!origin) {
+    userMsg.content = full
+    userMsg.ingesting = false
+    ingestGhost.value = null
+    return
+  }
+
+  const startX = origin.left + Math.min(40, origin.width * 0.22)
+  const startY = origin.top + origin.height * 0.5
+
+  for (let i = 0; i < flyCount; i++) {
+    if (token !== flyToken) return
+    const ch = chars[i]
+    const dest = ingestCaretPoint() || { x: startX + 8, y: startY - 88 }
+    const dx = dest.x - startX
+    const dy = dest.y - startY
+    const id = `${token}-${i}`
+
+    ingestGhost.value = chars.slice(i + 1).join('')
+
+    if (ch.trim()) {
+      flyGlyphs.value = [
+        ...flyGlyphs.value,
+        {
+          id,
+          ch,
+          x: startX,
+          y: startY,
+          dx,
+          dy,
+          mx: dx * 0.48,
+          my: dy * 0.42 - 36,
+          duration: FLY_DURATION_MS,
+        },
+      ]
+    }
+
+    afterFly(FLY_DURATION_MS, () => {
+      if (token !== flyToken) return
+      userMsg.content = chars.slice(0, i + 1).join('')
+      flyGlyphs.value = flyGlyphs.value.filter((g) => g.id !== id)
+      scrollToBottom()
+    })
+
+    if (i < flyCount - 1) await sleep(FLY_STAGGER_MS)
+  }
+
+  await sleep(FLY_DURATION_MS)
+  if (token !== flyToken) return
+  userMsg.content = full
+  userMsg.ingesting = false
+  ingestGhost.value = null
+  flyGlyphs.value = []
+}
+
 async function send(text, reuseUser = false) {
   const content = (text ?? input.value).trim()
   if (!content || sending.value) return
   input.value = ''
+  let userMsg = null
   if (!reuseUser) {
-    messages.value.push({ role: 'user', content })
-    messages.value.push({ role: 'assistant', content: '', pending: true })
+    userMsg = { role: 'user', content: '', ingesting: true }
+    messages.value.push(userMsg)
+    messages.value.push({ role: 'assistant', content: '', pending: true, holdWait: true })
   } else {
     const lastMsg = messages.value[messages.value.length - 1]
     if (lastMsg?.role === 'assistant') {
       lastMsg.content = ''
       lastMsg.pending = true
+      lastMsg.holdWait = false
     } else {
-      messages.value.push({ role: 'assistant', content: '', pending: true })
+      messages.value.push({ role: 'assistant', content: '', pending: true, holdWait: false })
     }
   }
   scrollToBottom()
   sending.value = true
   voiceOut.stop() // 清掉上一条回复可能还在排队/播放的音频
   const last = messages.value[messages.value.length - 1]
+  abortFly()
+  const token = flyToken
+  const ingestP = userMsg
+    ? flyIntoUserBubble(userMsg, content, token).then(() => {
+        if (last.pending) last.holdWait = false
+      })
+    : Promise.resolve()
   try {
     // 流式：每收到一句就即时上屏 + 合成克隆音色入队顺序播放，大幅降低首音延迟
     await sendChatStream({
       text: content,
       sessionId: props.sessionId,
       onSentence: async (sentence) => {
+        abortFly()
+        if (userMsg) {
+          userMsg.content = content
+          userMsg.ingesting = false
+        }
+        last.holdWait = false
         last.content += sentence
         last.pending = false
         scrollToBottom()
@@ -127,13 +262,26 @@ async function send(text, reuseUser = false) {
       },
     })
     if (!last.content) {
+      abortFly()
+      if (userMsg) {
+        userMsg.content = content
+        userMsg.ingesting = false
+      }
       last.content = '（没有收到回复）'
       last.pending = false
+      last.holdWait = false
     }
   } catch (e) {
+    abortFly()
+    if (userMsg) {
+      userMsg.content = content
+      userMsg.ingesting = false
+    }
     last.content = last.content || '抱歉，刚刚走神了，再说一次好吗？'
     last.pending = false
+    last.holdWait = false
   } finally {
+    await ingestP
     sending.value = false
     scrollToBottom()
   }
@@ -144,17 +292,21 @@ function hasRealConversation() {
   return messages.value.some((m) => m.role === 'user')
 }
 
-// 开新对话：先把旧对话归档到后端（落盘 + 长期记忆），再清空开新窗口
+// 开新对话：等后端开场白回来再切窗口；长期记忆在后台抽，不挡这一步
 async function newConversation() {
   if (archiving.value || sending.value) return
   const hadChat = hasRealConversation()
+  let greeting = makeGreeting(props.skillName)
   if (hadChat) {
     archiving.value = true
+    confirmNew.value = false
     const history = messages.value
       .filter((m) => !m.pending && m.content)
       .map((m) => ({ role: m.role, content: m.content }))
     try {
-      await uploadChatHistory({ sessionId: props.sessionId, chatHistory: history })
+      const res = await uploadChatHistory({ sessionId: props.sessionId, chatHistory: history })
+      const fromApi = String(res?.greeting || '').trim()
+      if (fromApi) greeting = fromApi
     } catch (e) {
       console.warn('[chat] 归档旧对话失败：', e.message)
     } finally {
@@ -162,8 +314,9 @@ async function newConversation() {
     }
   }
   voiceOut.stop()
+  abortFly()
   if (voiceIn.listening.value) voiceIn.stop()
-  messages.value = [{ role: 'assistant', content: makeGreeting(props.skillName) }]
+  messages.value = [{ role: 'assistant', content: greeting }]
   input.value = ''
   confirmNew.value = false
   scrollToBottom()
@@ -216,6 +369,7 @@ function onEnter(e) {
 }
 
 onMounted(scrollToBottom)
+onBeforeUnmount(abortFly)
 </script>
 
 <template>
@@ -232,8 +386,8 @@ onMounted(scrollToBottom)
       <div class="head-actions">
         <button
           class="icon-btn"
-          :title="archiving ? '正在归档旧对话…' : '开启新对话（旧对话会自动归档）'"
-          :aria-label="archiving ? '正在归档' : '新对话'"
+          :title="archiving ? '正在生成新开场…' : '开启新对话（旧对话会自动归档）'"
+          :aria-label="archiving ? '正在开启新对话' : '新对话'"
           :disabled="archiving || sending"
           @click="requestNewConversation"
         >
@@ -263,7 +417,7 @@ onMounted(scrollToBottom)
     <div v-if="confirmNew" class="confirm">
       <span>上一轮会记住，确定开新的吗？</span>
       <button type="button" class="ghost" @click="confirmNew = false">取消</button>
-      <button type="button" class="ok" @click="newConversation">确定</button>
+      <button type="button" class="ok" :disabled="archiving" @click="newConversation">确定</button>
     </div>
 
     <div ref="listRef" class="list">
@@ -273,7 +427,9 @@ onMounted(scrollToBottom)
         :role="m.role"
         :content="m.content"
         :pending="m.pending"
-        :show-copy="!!m.content && !m.pending"
+        :hold-wait="m.holdWait"
+        :ingesting="m.ingesting"
+        :show-copy="!!m.content && !m.pending && !m.ingesting"
         :show-retry="m.role === 'assistant' && i === lastIndex && !m.pending && !!m.content && hasRealConversation() && !sending"
         :show-stop="m.role === 'assistant' && i === lastIndex && voiceOut.speaking.value"
         @copy="copyText(m.content)"
@@ -297,17 +453,40 @@ onMounted(scrollToBottom)
       >
         <Icon name="mic" :size="18" />
       </button>
-      <input
-        v-model="input"
-        type="text"
-        placeholder="说点什么…（回车发送）"
-        @keydown.enter="onEnter"
-      />
+      <div class="composer-field">
+        <input
+          ref="inputRef"
+          v-model="input"
+          type="text"
+          placeholder="说点什么…（回车发送）"
+          :disabled="ingestGhost != null"
+          @keydown.enter="onEnter"
+        />
+        <span v-if="ingestGhost != null" class="ingest-ghost">{{ ingestGhost }}</span>
+      </div>
       <button class="send" :disabled="sending || !input.trim()" @click="send()">发送</button>
     </div>
 
     <div v-if="toast" class="toast">{{ toast }}</div>
   </div>
+  <Teleport to="body">
+    <div v-if="flyGlyphs.length" class="galatea-glyph-layer" aria-hidden="true">
+      <span
+        v-for="g in flyGlyphs"
+        :key="g.id"
+        class="galatea-fly-glyph"
+        :style="{
+          left: g.x + 'px',
+          top: g.y + 'px',
+          '--dx': g.dx + 'px',
+          '--dy': g.dy + 'px',
+          '--mx': g.mx + 'px',
+          '--my': g.my + 'px',
+          '--dur': g.duration + 'ms',
+        }"
+      >{{ g.ch }}</span>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -414,6 +593,10 @@ onMounted(scrollToBottom)
   color: #fff;
   background: var(--accent-grad);
 }
+.confirm .ok:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 
 .list {
   flex: 1;
@@ -461,8 +644,13 @@ onMounted(scrollToBottom)
   border-top: 1px solid var(--border);
   background: rgba(0, 0, 0, 0.12);
 }
-.composer input {
+.composer-field {
   flex: 1;
+  position: relative;
+  min-width: 0;
+}
+.composer input {
+  width: 100%;
   height: var(--control-h);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
@@ -471,6 +659,27 @@ onMounted(scrollToBottom)
   padding: 0 14px;
   font-size: 14px;
   outline: none;
+}
+.composer-field:has(.ingest-ghost) input {
+  color: transparent;
+  caret-color: transparent;
+}
+.composer-field:has(.ingest-ghost) input::placeholder {
+  color: transparent;
+}
+.ingest-ghost {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: var(--text);
+  pointer-events: none;
+  overflow: hidden;
+  white-space: pre;
 }
 .composer input:focus {
   border-color: var(--gold);
@@ -559,6 +768,57 @@ onMounted(scrollToBottom)
   .mic.active,
   .wave i {
     animation: none;
+  }
+}
+</style>
+
+<style>
+.galatea-glyph-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  pointer-events: none;
+  overflow: hidden;
+}
+.galatea-fly-glyph {
+  position: absolute;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  color: #fff8fb;
+  white-space: nowrap;
+  text-shadow:
+    0 0 10px rgba(255, 143, 180, 0.95),
+    0 4px 14px rgba(80, 20, 60, 0.45);
+  animation: galateaGlyphFly var(--dur, 520ms) cubic-bezier(0.22, 0.78, 0.28, 1) both;
+  will-change: transform, opacity;
+}
+@keyframes galateaGlyphFly {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.82);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.16);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--mx)), calc(-50% + var(--my))) scale(1.04);
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.72);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .galatea-fly-glyph {
+    animation: none;
+    opacity: 0;
   }
 }
 </style>

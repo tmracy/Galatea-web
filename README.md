@@ -15,9 +15,6 @@ Galatea 语音 AI 伴侣的前端。Vue 3 + Vite，单页三栏布局：左侧�
 - **人设（Skill）管理**：上传带 frontmatter 的 `skill.md` 定义角色，前端解析 `name` / `description` 并展示、切换。
 - **生产力 Agent**：上传整个文件夹作为工作区，下发自然语言任务，产出文件可直接下载。
 - **情绪陪伴**：独立的情绪对话通道，与主聊天历史隔离。
-- **会话登录**：以 `session_id` + 密码注册/登录，用于后端的记忆与数据隔离；登录态存在 `sessionStorage`。
-- **记忆路由**：陪伴对话检索长期记忆时，默认把最近 6 条对话和用户当前问句一起交给路由判断，而不再只看这一句 query。
-- **使用指南**：登录页与主界面均可打开操作手册；首次登录会自动出现。
 
 ## 快速开始
 
@@ -63,7 +60,7 @@ npm run preview
 | POST | `/api/asr` | 语音转文字（multipart） |
 | POST | `/api/tts` | 文本转语音，返回 base64 音频 |
 | POST | `/api/clone` | 上传参考音频克隆音色（multipart） |
-| POST | `/api/upload` | 归档当前对话，触发长期记忆提炼 |
+| POST | `/api/upload` | 归档当前对话：落盘、清空短期记忆、返回 `greeting`；长期记忆后台提炼 |
 | GET / POST | `/api/skills` | 人设列表 / 上传人设 |
 | POST | `/api/auth/check`、`/register`、`/login` | 会话注册登录 |
 | POST | `/agent/upload`、`/agent/simple`、`/agent/clear` | 生产力 Agent 上传、执行、清空 |
@@ -83,13 +80,14 @@ src/
 │   ├── index.js            # 全部后端接口 + mock 回退
 │   └── mock.js             # 离线演示数据
 ├── components/
-│   ├── ChatPanel.vue       # 对话列表、输入、流式渲染
-│   ├── MessageBubble.vue   # 消息气泡（Markdown 渲染）
+│   ├── ChatPanel.vue       # 对话列表、输入、流式渲染、飞字、新窗口
+│   ├── MessageBubble.vue   # 消息气泡与等待陪白
 │   ├── Live2DStage.vue     # Live2D 画布与嘴型同步
 │   ├── SkillSidebar.vue    # 人设列表与上传
 │   ├── VoiceCloneModal.vue # 音色克隆弹窗
 │   ├── AgentPanel.vue      # 生产力 Agent
 │   ├── EmotionPanel.vue    # 情绪陪伴
+│   ├── UserGuide.vue       # 可翻页使用手册
 │   └── LoginGate.vue       # 注册 / 登录
 ├── composables/
 │   ├── useAuth.js          # 会话登录态
@@ -111,6 +109,9 @@ Vue 3（Composition API，`<script setup>`）、Vite 6、marked、oh-my-live2d�
 
 前后端功能点变更记在这里，新的写在最上面。
 
+- **2026-08-29（前端 / 后端）新窗口开场**：开新对话时  先落盘并清空短期记忆，根据上一窗生成 `greeting` 后立刻返回；前端拿到开场白再切新窗口。长期记忆提炼改到后台，不再挡住切窗。开场白失败则用默认问候。
+- **2026-08-29（前端）发送飞字**：用户发送后，句子从输入框逐字飞入右侧用户气泡（起飞间隔约 200ms）；请求并行发出。飞完后才出等待陪白；回复先到则打断飞字并填上整句。超过约 40 字只飞前面一段，其余落地后一次性出现。系统「减少动效」时跳过飞字。
+- **2026-08-28（前端）陪伴等待**：首包到达前，助手气泡用「我在听… / 让我想想…」分阶陪白盖住 5–30 秒空窗；请求仍立刻发出，不做打字机延迟。
 - **2026-08-27（前端）使用指南**：界面内加入可翻页的使用手册。登录页可先阅读；登录后首次会自动打开，也可点舞台右上角书本或左侧「使用指南」。
 - **2026-08-27（后端）记忆路由**：长期记忆检索不再只根据用户当前 query。默认取最近 6 条对话，与当前 query 一并交给记忆路由，再决定是否检索、如何检索长期记忆。
 

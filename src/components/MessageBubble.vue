@@ -1,26 +1,85 @@
 <script setup>
+import { ref, watch, onBeforeUnmount } from 'vue'
 import Icon from './Icon.vue'
 
-defineProps({
+const props = defineProps({
   role: { type: String, required: true }, // 'user' | 'assistant'
   content: { type: String, default: '' },
   pending: { type: Boolean, default: false },
+  holdWait: { type: Boolean, default: false },
+  ingesting: { type: Boolean, default: false },
   showCopy: { type: Boolean, default: false },
   showRetry: { type: Boolean, default: false },
   showStop: { type: Boolean, default: false },
 })
 const emit = defineEmits(['copy', 'retry', 'stop'])
+
+const WAIT_LINES = [
+  { after: 0, text: '我在听…' },
+  { after: 3000, text: '让我想想…' },
+  { after: 10000, text: '再等我一下…' },
+  { after: 20000, text: '马上就好…' },
+]
+
+const waitLine = ref(WAIT_LINES[0].text)
+let waitTimer = null
+let startedAt = 0
+
+function prefersReducedMotion() {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function pickLine(elapsed) {
+  let text = WAIT_LINES[0].text
+  for (const row of WAIT_LINES) {
+    if (elapsed >= row.after) text = row.text
+  }
+  return text
+}
+
+function stopWait() {
+  if (waitTimer) {
+    clearInterval(waitTimer)
+    waitTimer = null
+  }
+}
+
+function startWait() {
+  stopWait()
+  startedAt = Date.now()
+  waitLine.value = WAIT_LINES[0].text
+  if (prefersReducedMotion()) return
+  waitTimer = setInterval(() => {
+    waitLine.value = pickLine(Date.now() - startedAt)
+  }, 400)
+}
+
+watch(
+  () => props.pending && !props.holdWait,
+  (on) => {
+    if (on) startWait()
+    else stopWait()
+  },
+  { immediate: true },
+)
+
+onBeforeUnmount(stopWait)
 </script>
 
 <template>
-  <div class="row" :class="role">
+  <div v-if="!(pending && holdWait)" class="row" :class="[role, { ingesting }]">
     <div v-if="role === 'assistant'" class="ava" aria-hidden="true"></div>
     <div class="stack">
       <div class="bubble" :class="role">
-        <span v-if="pending" class="typing">
-          <i></i><i></i><i></i>
+        <span v-if="pending" class="wait" aria-live="polite">
+          <span class="typing">
+            <i></i><i></i><i></i>
+          </span>
+          <span :key="waitLine" class="wait-copy">{{ waitLine }}</span>
         </span>
-        <template v-else>{{ content }}</template>
+        <template v-else>
+          {{ content }}<span v-if="ingesting" class="caret" data-user-ingest aria-hidden="true"></span>
+        </template>
       </div>
       <div v-if="!pending && content && (showCopy || showRetry || showStop)" class="acts">
         <button
@@ -67,6 +126,7 @@ const emit = defineEmits(['copy', 'retry', 'stop'])
 }
 .row.user {
   justify-content: flex-end;
+  animation: bubbleIn 0.28s ease-out;
 }
 .row.assistant {
   justify-content: flex-start;
@@ -102,6 +162,10 @@ const emit = defineEmits(['copy', 'retry', 'stop'])
   word-break: break-word;
   white-space: pre-wrap;
 }
+.row.user.ingesting .bubble {
+  min-width: 48px;
+  min-height: 40px;
+}
 .bubble.user {
   background: var(--user-bubble);
   color: #fff;
@@ -136,6 +200,27 @@ const emit = defineEmits(['copy', 'retry', 'stop'])
   color: var(--text);
   background: rgba(255, 255, 255, 0.1);
 }
+.wait {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.wait-copy {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 13.5px;
+  font-style: italic;
+  color: var(--text-dim);
+  animation: copyIn 0.35s ease-out;
+}
+.caret {
+  display: inline-block;
+  width: 1.5px;
+  height: 0.95em;
+  margin-left: 2px;
+  vertical-align: -0.1em;
+  background: rgba(255, 255, 255, 0.85);
+  animation: caretBlink 0.9s steps(1) infinite;
+}
 .typing {
   display: inline-flex;
   gap: 4px;
@@ -167,9 +252,43 @@ const emit = defineEmits(['copy', 'retry', 'stop'])
     transform: translateY(-3px);
   }
 }
+@keyframes bubbleIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes copyIn {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes caretBlink {
+  50% {
+    opacity: 0;
+  }
+}
 @media (hover: none) {
   .acts {
     opacity: 0.85;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .row.user,
+  .wait-copy,
+  .caret {
+    animation: none;
+  }
+  .typing i {
+    animation: none;
+    opacity: 0.7;
   }
 }
 </style>

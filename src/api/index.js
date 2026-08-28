@@ -204,11 +204,12 @@ export async function cloneVoice(file, sessionId) {
 /**
  * 归档当前对话窗口（开新对话/退出时调用）。
  * 对齐 entry/server.py：POST /api/upload，body { session_id, chat_history }。
- * 后端会落盘 + 提炼长期记忆 + 清空短期记忆。
+ * 后端先落盘、清空短期记忆并返回 greeting；长期记忆在后台提炼。
  * @param {{ sessionId: string, chatHistory: Array<{role:string,content:string}> }} payload
+ * @returns {Promise<{ code: number, archived?: boolean, greeting?: string }>}
  */
 export async function uploadChatHistory({ sessionId, chatHistory }) {
-  if (useMock()) return { code: 0, info: 'mock 已归档', archived: true }
+  if (useMock()) return { code: 0, info: 'mock 已归档', archived: true, greeting: '' }
   const data = await postJSON('/api/upload', {
     session_id: sessionId,
     chat_history: chatHistory,
