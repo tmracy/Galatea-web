@@ -19,7 +19,7 @@ const { login, register } = useAuth()
 const ACCOUNT_HINT = '字母、数字、下划线、连字符，2~32 位'
 
 onMounted(() => {
-  // 登录门全屏时隐藏页面滚动条（那条右侧竖线）
+  // 只锁 body，滚动发生在 .gate 内部，避免双滚动条
   document.documentElement.style.overflow = 'hidden'
   document.body.style.overflow = 'hidden'
 })
@@ -86,6 +86,7 @@ function switchMode(m) {
       <span class="orb o3"></span>
       <span class="dust"></span>
     </div>
+    <div class="gate-spacer" aria-hidden="true"></div>
 
     <!-- ① 神话传说：整块居中 + 高对比文字 -->
     <section v-if="phase === 'myth'" class="myth" key="myth">
@@ -198,6 +199,7 @@ function switchMode(m) {
         </button>
       </form>
     </div>
+    <div class="gate-spacer" aria-hidden="true"></div>
   </div>
 </template>
 
@@ -208,21 +210,25 @@ function switchMode(m) {
   position: fixed;
   inset: 0;
   z-index: 50;
-  width: 100vw;
-  height: 100vh;
+  width: auto;
+  height: auto;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
+  justify-content: flex-start;
+  padding: max(24px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
+    max(24px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
   box-sizing: border-box;
-  overflow: hidden;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
-.gate::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
+.gate-spacer {
+  flex: 1 0 0;
+  min-height: 0;
+  width: 100%;
+  pointer-events: none;
 }
 
 .veil {
@@ -274,7 +280,6 @@ function switchMode(m) {
   position: relative;
   z-index: 1;
   width: min(560px, 100%);
-  margin: auto;
   flex-shrink: 0;
   animation: riseIn 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -442,6 +447,7 @@ function switchMode(m) {
   z-index: 1;
   width: 100%;
   max-width: 400px;
+  flex-shrink: 0;
   padding: 28px 28px 32px;
   border-radius: var(--radius);
   text-align: center;
@@ -604,6 +610,28 @@ label small {
   }
   .tale p {
     font-size: 14px;
+  }
+}
+
+@media (max-height: 820px) {
+  .portrait-wrap {
+    width: 112px;
+    height: 112px;
+    margin-bottom: 10px;
+  }
+  .latin {
+    font-size: 36px;
+  }
+  .myth-panel {
+    padding: 20px 20px 22px;
+  }
+  .tale {
+    margin-bottom: 16px;
+  }
+  .tale p {
+    font-size: 14px;
+    line-height: 1.7;
+    margin-bottom: 8px;
   }
 }
 

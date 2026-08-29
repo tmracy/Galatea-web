@@ -36,7 +36,7 @@ const FLY_DURATION_MS = 520
 const FLY_MAX_CHARS = 40
 
 // 当前使用的克隆音色（Data/ 下的 *_voice_id.json 文件名）；null 用后端默认音色
-const voice = ref('赵丽颖')
+const voice = ref('甜美女声')
 const voiceCloned = ref(false)
 const showClone = ref(false)
 
@@ -238,6 +238,7 @@ async function send(text, reuseUser = false) {
   const ingestP = userMsg
     ? flyIntoUserBubble(userMsg, content, token).then(() => {
         if (last.pending) last.holdWait = false
+        scrollToBottom()
       })
     : Promise.resolve()
   try {

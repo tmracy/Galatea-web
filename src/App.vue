@@ -120,8 +120,9 @@ watch(middleMode, (m) => {
 
 <style scoped>
 .app {
-  height: 100vh;
-  width: 100vw;
+  height: 100%;
+  width: 100%;
+  max-height: 100%;
   display: grid;
   grid-template-columns: 268px 1fr 400px;
   gap: 14px;
@@ -225,7 +226,7 @@ watch(middleMode, (m) => {
     grid-template-rows: auto minmax(180px, 30vh) minmax(0, 1fr);
     gap: 10px;
     padding: 10px;
-    height: 100vh;
+    height: 100%;
     min-height: 0;
     overflow: hidden;
   }

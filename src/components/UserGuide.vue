@@ -283,6 +283,7 @@ onBeforeUnmount(() => {
 .book {
   width: min(920px, 100%);
   height: min(640px, calc(100vh - 48px));
+  height: min(640px, calc(100dvh - 48px));
   display: grid;
   grid-template-columns: 232px 1fr;
   border-radius: 22px;
@@ -549,6 +550,7 @@ onBeforeUnmount(() => {
   .book {
     grid-template-columns: 1fr;
     height: min(720px, calc(100vh - 24px));
+    height: min(720px, calc(100dvh - 24px));
   }
   .spine {
     border-right: none;

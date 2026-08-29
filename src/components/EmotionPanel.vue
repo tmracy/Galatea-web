@@ -9,7 +9,7 @@ const props = defineProps({
   sessionId: { type: String, default: 'web' },
 })
 
-const voice = ref('赵丽颖')
+const voice = ref('甜美女声')
 const voiceOut = useVoiceOutput()
 
 const GREETING =
