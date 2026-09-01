@@ -343,10 +343,46 @@ function stopSpeak() {
   voiceOut.stop()
 }
 
-async function copyText(text) {
+function copyViaExecCommand(text) {
+  const ta = document.createElement('textarea')
+  ta.value = text
+  ta.setAttribute('readonly', '')
+  ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:none;opacity:0;'
+  document.body.appendChild(ta)
+  const selection = document.getSelection()
+  const saved = selection?.rangeCount ? selection.getRangeAt(0) : null
+  ta.focus()
+  ta.select()
+  ta.setSelectionRange(0, ta.value.length)
+  let ok = false
   try {
-    await navigator.clipboard.writeText(text)
-    showToast('已复制')
+    ok = document.execCommand('copy')
+  } finally {
+    document.body.removeChild(ta)
+    if (saved && selection) {
+      selection.removeAllRanges()
+      selection.addRange(saved)
+    }
+  }
+  return ok
+}
+
+async function copyText(text) {
+  if (!text) {
+    showToast('复制失败')
+    return
+  }
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      showToast('已复制')
+      return
+    }
+  } catch (_) {
+    /* HTTP 非安全上下文会失败，走下面兜底 */
+  }
+  try {
+    showToast(copyViaExecCommand(text) ? '已复制' : '复制失败')
   } catch (_) {
     showToast('复制失败')
   }
