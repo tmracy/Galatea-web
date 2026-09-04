@@ -190,6 +190,12 @@ function activate(id) {
         <Icon name="logout" :size="15" />
         退出登录
       </button>
+      <a
+        class="beian"
+        href="https://beian.miit.gov.cn/"
+        target="_blank"
+        rel="noopener noreferrer"
+      >浙ICP备2026072556号-1</a>
     </div>
   </aside>
 </template>
@@ -406,6 +412,18 @@ function activate(id) {
   font-size: 12px;
   line-height: 1.55;
 }
+.beian {
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: var(--text-faint);
+  text-decoration: none;
+  padding: 4px 0 0;
+}
+.beian:hover {
+  color: var(--text-dim);
+}
 
 @media (max-width: 880px) {
   .sidebar {
@@ -444,6 +462,9 @@ function activate(id) {
     padding: 0 12px;
     font-size: 0;
     gap: 0;
+  }
+  .beian {
+    display: none;
   }
 }
 code {

@@ -200,6 +200,12 @@ function switchMode(m) {
       </form>
     </div>
     <div class="gate-spacer" aria-hidden="true"></div>
+    <a
+      class="beian"
+      href="https://beian.miit.gov.cn/"
+      target="_blank"
+      rel="noopener noreferrer"
+    >浙ICP备2026072556号-1</a>
   </div>
 </template>
 
@@ -229,6 +235,20 @@ function switchMode(m) {
   min-height: 0;
   width: 100%;
   pointer-events: none;
+}
+.beian {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  padding: 10px 12px 4px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(255, 232, 240, 0.55);
+  text-decoration: none;
+  text-align: center;
+}
+.beian:hover {
+  color: #ffe8f2;
 }
 
 .veil {

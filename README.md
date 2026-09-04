@@ -4,7 +4,7 @@ Galatea 语音 AI 伴侣的前端。Vue 3 + Vite，单页三栏布局：左侧�
 
 后端为独立仓库的 Flask 服务（`Galatea`），本仓库只负责界面与接口调用。后端未启动时会自动回退到内置 mock，UI 仍可完整演示。
 
-在线体验：[http://120.27.209.230/](http://120.27.209.230/)
+在线体验：[https://galateaagent.com/](https://galateaagent.com/)
 
 ## 功能
 
