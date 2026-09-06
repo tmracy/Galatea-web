@@ -135,7 +135,6 @@ onBeforeUnmount(() => {
     <div class="ambient" aria-hidden="true">
       <span class="blob b1"></span>
       <span class="blob b2"></span>
-      <span class="blob b3"></span>
     </div>
 
     <div class="inner">
@@ -144,7 +143,7 @@ onBeforeUnmount(() => {
           <span class="badge"><Icon name="heart" :size="18" /></span>
           <div>
             <h2>情绪陪伴</h2>
-            <p>深度情绪识别 · 策略化回应</p>
+            <p>给此刻的情绪，一个被听见的地方</p>
           </div>
         </div>
         <button
@@ -160,12 +159,12 @@ onBeforeUnmount(() => {
       <div class="pipeline">
         <div class="pipe-item">
           <span class="dot"></span>
-          <span>心理画像</span>
+          <span>听见当下</span>
         </div>
         <span class="pipe-arrow">→</span>
         <div class="pipe-item">
           <span class="dot d2"></span>
-          <span>策略优选</span>
+          <span>理解感受</span>
         </div>
         <span class="pipe-arrow">→</span>
         <div class="pipe-item">
@@ -184,12 +183,12 @@ onBeforeUnmount(() => {
         />
       </div>
 
-      <div v-if="sending" class="thinking">
+      <div v-if="sending" class="thinking" role="status" aria-live="polite">
         <span class="pulse"></span>
         <span class="fun">{{ pipelineLine }}</span>
       </div>
 
-      <div v-if="errorMsg" class="error">{{ errorMsg }}</div>
+      <div v-if="errorMsg" class="error" role="alert">{{ errorMsg }}</div>
 
       <div v-if="!hasChat" class="chips">
         <span class="chips-label">试试这些：</span>
@@ -197,6 +196,7 @@ onBeforeUnmount(() => {
           v-for="p in QUICK_PROMPTS"
           :key="p"
           class="chip"
+          type="button"
           :disabled="sending"
           @click="pickPrompt(p)"
         >
@@ -211,13 +211,14 @@ onBeforeUnmount(() => {
           rows="2"
           :disabled="sending"
           placeholder="说说此刻的心情…（Enter 发送，Shift+Enter 换行）"
+          aria-label="说说此刻的心情"
           @keydown="onKeydown"
         />
         <div class="actions">
-          <button class="run" :disabled="sending || !input.trim()" @click="send()">
+          <button type="button" class="run" :disabled="sending || !input.trim()" @click="send()">
             {{ sending ? '倾听中…' : '倾诉' }}
           </button>
-          <button class="ghost" :disabled="sending" @click="reset">清空</button>
+          <button type="button" class="ghost" :disabled="sending" @click="reset">清空</button>
         </div>
       </div>
     </div>
@@ -241,15 +242,15 @@ onBeforeUnmount(() => {
 .blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(52px);
-  opacity: 0.45;
+  filter: blur(60px);
+  opacity: 0.24;
 }
 .blob.b1 {
   width: 280px;
   height: 280px;
   left: -60px;
   top: 10%;
-  background: radial-gradient(circle, rgba(255, 143, 180, 0.6), transparent 70%);
+  background: radial-gradient(circle, rgba(222, 119, 160, 0.42), transparent 70%);
   animation: drift 12s ease-in-out infinite;
 }
 .blob.b2 {
@@ -257,16 +258,8 @@ onBeforeUnmount(() => {
   height: 220px;
   right: -40px;
   top: 35%;
-  background: radial-gradient(circle, rgba(201, 168, 255, 0.5), transparent 70%);
+  background: radial-gradient(circle, rgba(185, 150, 218, 0.38), transparent 70%);
   animation: drift 14s ease-in-out infinite reverse;
-}
-.blob.b3 {
-  width: 200px;
-  height: 200px;
-  left: 30%;
-  bottom: -50px;
-  background: radial-gradient(circle, rgba(255, 143, 180, 0.32), transparent 70%);
-  animation: drift 16s ease-in-out infinite 2s;
 }
 @keyframes drift {
   0%,
@@ -284,7 +277,7 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   padding: 22px;
-  padding-top: 52px;
+  padding-top: 74px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -304,8 +297,8 @@ onBeforeUnmount(() => {
 }
 .mute-btn {
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: var(--touch-min);
+  height: var(--touch-min);
   border-radius: 10px;
   display: grid;
   place-items: center;
@@ -322,12 +315,12 @@ onBeforeUnmount(() => {
   height: 42px;
   flex: 0 0 42px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #ff8fb4 0%, #f06b9b 100%);
+  background: var(--accent-soft);
+  border: 1px solid var(--border-strong);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  box-shadow: 0 8px 28px rgba(240, 107, 155, 0.35);
+  color: #f3bed2;
 }
 .head h2 {
   font-family: var(--font-display);
@@ -348,8 +341,8 @@ onBeforeUnmount(() => {
   gap: 8px;
   padding: 10px 14px;
   border-radius: 999px;
-  background: rgba(255, 143, 180, 0.08);
-  border: 1px solid rgba(255, 143, 180, 0.22);
+  background: var(--surface-0);
+  border: 1px solid var(--border);
 }
 .pipe-item {
   display: flex;
@@ -364,16 +357,13 @@ onBeforeUnmount(() => {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #ff8fb4;
-  box-shadow: 0 0 8px rgba(255, 143, 180, 0.8);
+  background: var(--text-faint);
 }
 .dot.d2 {
-  background: #ffc4ae;
-  box-shadow: 0 0 8px rgba(255, 143, 180, 0.7);
+  background: #bda9b6;
 }
 .dot.d3 {
-  background: #c9a8ff;
-  box-shadow: 0 0 8px rgba(201, 168, 255, 0.7);
+  background: var(--accent);
 }
 .pipe-arrow {
   font-size: 10px;
@@ -387,7 +377,7 @@ onBeforeUnmount(() => {
   overflow-y: auto;
   padding: 4px 2px;
   border-radius: 16px;
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, 0.1);
   border: 1px solid var(--border);
 }
 
@@ -398,8 +388,8 @@ onBeforeUnmount(() => {
   gap: 10px;
   padding: 10px 14px;
   border-radius: 14px;
-  background: rgba(255, 143, 180, 0.08);
-  border: 1px solid rgba(255, 143, 180, 0.22);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
 }
 .pulse {
   width: 10px;
@@ -447,7 +437,8 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 .chip {
-  padding: 6px 12px;
+  min-height: 38px;
+  padding: 0 12px;
   border-radius: 999px;
   font-size: 12px;
   color: var(--text-dim);
@@ -457,8 +448,8 @@ onBeforeUnmount(() => {
 }
 .chip:hover:not(:disabled) {
   color: var(--text);
-  border-color: rgba(255, 143, 180, 0.5);
-  background: rgba(255, 143, 180, 0.1);
+  border-color: var(--border-strong);
+  background: var(--accent-soft);
 }
 .chip:disabled {
   opacity: 0.5;
@@ -479,15 +470,15 @@ onBeforeUnmount(() => {
   padding: 12px 14px;
   border-radius: 14px;
   border: 1px solid var(--border);
-  background: var(--panel);
+  background: var(--surface-1);
   color: var(--text);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.5;
   outline: none;
 }
 .query:focus {
-  border-color: rgba(255, 143, 180, 0.6);
-  box-shadow: 0 0 0 3px rgba(255, 143, 180, 0.12);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .query:disabled {
   opacity: 0.6;
@@ -499,13 +490,14 @@ onBeforeUnmount(() => {
 }
 .run {
   flex: 1;
-  padding: 12px;
-  border-radius: 999px;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: var(--radius-pill);
   font-size: 14px;
   font-weight: 700;
   color: #fff;
-  background: linear-gradient(135deg, #ff8fb4 0%, #f06b9b 55%, #c9a8ff 100%);
-  box-shadow: 0 8px 24px rgba(240, 107, 155, 0.32);
+  background: var(--accent-grad);
+  box-shadow: 0 10px 24px rgba(187, 83, 125, 0.2);
   transition: opacity 0.18s, transform 0.1s;
 }
 .run:active:not(:disabled) {
@@ -516,8 +508,9 @@ onBeforeUnmount(() => {
   cursor: not-allowed;
 }
 .ghost {
-  padding: 12px 18px;
-  border-radius: 999px;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: var(--radius-pill);
   font-size: 14px;
   color: var(--text-dim);
   border: 1px solid var(--border);
@@ -525,5 +518,32 @@ onBeforeUnmount(() => {
 .ghost:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+@media (max-width: 880px) {
+  .inner {
+    padding: 70px 14px 14px;
+    gap: 10px;
+  }
+  .head p {
+    display: none;
+  }
+  .pipeline {
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+  .pipe-item {
+    flex-shrink: 0;
+  }
+  .query {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blob,
+  .pulse {
+    animation: none;
+  }
 }
 </style>

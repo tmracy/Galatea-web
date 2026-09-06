@@ -504,7 +504,7 @@ onBeforeUnmount(abortFly)
       <button class="send" :disabled="sending || !input.trim()" @click="send()">发送</button>
     </div>
 
-    <div v-if="toast" class="toast">{{ toast }}</div>
+    <div v-if="toast" class="toast" role="status" aria-live="polite">{{ toast }}</div>
   </div>
   <Teleport to="body">
     <div v-if="flyGlyphs.length" class="galatea-glyph-layer" aria-hidden="true">
@@ -534,7 +534,7 @@ onBeforeUnmount(abortFly)
   flex: 1;
   min-height: 0;
   height: 100%;
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 .chat-head {
@@ -542,14 +542,16 @@ onBeforeUnmount(abortFly)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
+  min-height: 62px;
+  padding: 8px 12px 8px 18px;
   border-bottom: 1px solid var(--border);
 }
 .title {
-  font-family: var(--font-display);
-  font-size: 18px;
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.01em;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -561,14 +563,18 @@ onBeforeUnmount(abortFly)
   background: var(--text-faint);
 }
 .live.on {
-  background: #7be0a4;
-  box-shadow: 0 0 8px #7be0a4;
+  background: var(--success);
+  box-shadow: 0 0 8px rgba(118, 213, 163, 0.72);
 }
 .voice-tag {
+  max-width: 112px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 11px;
   font-weight: 500;
-  color: var(--gold);
-  background: rgba(255, 143, 180, 0.12);
+  color: var(--text-faint);
+  background: var(--surface-1);
   padding: 2px 8px;
   border-radius: 999px;
   display: inline-flex;
@@ -581,8 +587,8 @@ onBeforeUnmount(abortFly)
   gap: 6px;
 }
 .icon-btn {
-  width: 36px;
-  height: 36px;
+  width: var(--touch-min);
+  height: var(--touch-min);
   border-radius: var(--radius-sm);
   opacity: 0.85;
   color: var(--text-dim);
@@ -593,7 +599,7 @@ onBeforeUnmount(abortFly)
 .icon-btn:hover {
   opacity: 1;
   color: var(--text);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-2);
 }
 .icon-btn:disabled {
   opacity: 0.4;
@@ -605,8 +611,8 @@ onBeforeUnmount(abortFly)
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
-  font-size: 12px;
+  padding: 8px 12px 8px 18px;
+  font-size: 13px;
   color: var(--text-dim);
   background: rgba(255, 143, 180, 0.08);
   border-bottom: 1px solid var(--border);
@@ -616,7 +622,7 @@ onBeforeUnmount(abortFly)
 }
 .confirm .ghost,
 .confirm .ok {
-  height: 28px;
+  min-height: 38px;
   padding: 0 12px;
   border-radius: 8px;
   font-size: 12px;
@@ -640,7 +646,7 @@ onBeforeUnmount(abortFly)
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px 18px;
+  padding: 18px 16px 22px;
   overscroll-behavior: contain;
 }
 
@@ -676,10 +682,10 @@ onBeforeUnmount(abortFly)
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 8px;
+  padding: 12px;
   border-top: 1px solid var(--border);
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(10, 7, 12, 0.24);
 }
 .composer-field {
   flex: 1;
@@ -691,10 +697,10 @@ onBeforeUnmount(abortFly)
   height: var(--control-h);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-1);
   color: var(--text);
   padding: 0 14px;
-  font-size: 14px;
+  font-size: 15px;
   outline: none;
 }
 .composer-field:has(.ingest-ghost) input {
@@ -719,8 +725,8 @@ onBeforeUnmount(abortFly)
   white-space: pre;
 }
 .composer input:focus {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(255, 143, 180, 0.14);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .mic {
   width: var(--control-h);
@@ -729,12 +735,12 @@ onBeforeUnmount(abortFly)
   display: grid;
   place-items: center;
   color: var(--text-dim);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-1);
   border: 1px solid var(--border);
   transition: all 0.2s;
 }
 .mic:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--surface-2);
 }
 .mic.active {
   color: #fff;
@@ -749,12 +755,12 @@ onBeforeUnmount(abortFly)
 .send {
   height: var(--control-h);
   padding: 0 18px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   background: var(--accent-grad);
   color: #fff;
   font-weight: 700;
   font-size: 14px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   transition: opacity 0.2s, transform 0.1s;
 }
 .send:disabled {
@@ -807,6 +813,29 @@ onBeforeUnmount(abortFly)
     animation: none;
   }
 }
+
+@media (max-width: 880px) {
+  .chat-head {
+    min-height: 56px;
+    padding-left: 14px;
+  }
+  .voice-tag {
+    display: none;
+  }
+  .list {
+    padding: 12px 12px 18px;
+  }
+  .composer {
+    padding: 10px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  }
+  .composer input {
+    font-size: 16px;
+  }
+  .send {
+    padding: 0 15px;
+  }
+}
 </style>
 
 <style>
@@ -819,15 +848,15 @@ onBeforeUnmount(abortFly)
 }
 .galatea-fly-glyph {
   position: absolute;
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
-  font-size: 20px;
+  font-family: var(--font-display);
+  font-size: 18px;
   font-weight: 600;
   line-height: 1;
-  color: #fff8fb;
+  color: #ffe9f1;
   white-space: nowrap;
   text-shadow:
-    0 0 10px rgba(255, 143, 180, 0.95),
-    0 4px 14px rgba(80, 20, 60, 0.45);
+    0 0 8px rgba(243, 142, 175, 0.68),
+    0 4px 12px rgba(20, 8, 16, 0.34);
   animation: galateaGlyphFly var(--dur, 520ms) cubic-bezier(0.22, 0.78, 0.28, 1) both;
   will-change: transform, opacity;
 }
@@ -858,4 +887,5 @@ onBeforeUnmount(abortFly)
     opacity: 0;
   }
 }
+
 </style>

@@ -20,21 +20,26 @@ const CHAPTERS = [
 
 const active = ref(0)
 const bodyRef = ref(null)
+const bookRef = ref(null)
+const closeRef = ref(null)
 const chapter = computed(() => CHAPTERS[active.value])
 const isFirst = computed(() => active.value === 0)
 const isLast = computed(() => active.value === CHAPTERS.length - 1)
 let prevOverflow = ''
+let previousFocus = null
 
 watch(
   () => props.open,
   (on) => {
     if (on) {
       active.value = 0
+      previousFocus = document.activeElement
       prevOverflow = document.body.style.overflow
       document.body.style.overflow = 'hidden'
-      nextTick(() => bodyRef.value?.focus())
+      nextTick(() => closeRef.value?.focus())
     } else {
       document.body.style.overflow = prevOverflow
+      nextTick(() => previousFocus?.focus?.())
     }
   },
 )
@@ -57,6 +62,23 @@ function go(i) {
 function onKey(e) {
   if (!props.open) return
   if (e.key === 'Escape') close()
+  if (e.key === 'Tab') {
+    const focusable = Array.from(
+      bookRef.value?.querySelectorAll(
+        'button:not(:disabled), [href], input:not(:disabled), [tabindex]:not([tabindex="-1"])',
+      ) || [],
+    )
+    if (!focusable.length) return
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (e.shiftKey && (document.activeElement === first || !bookRef.value?.contains(document.activeElement))) {
+      e.preventDefault()
+      last.focus()
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault()
+      first.focus()
+    }
+  }
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
     e.preventDefault()
     go(active.value + 1)
@@ -85,7 +107,7 @@ onBeforeUnmount(() => {
         aria-labelledby="guide-title"
         @click.self="close"
       >
-        <div class="book glass">
+        <div ref="bookRef" class="book">
           <aside class="spine">
             <p class="eyebrow">试用版 · Chrome / Edge</p>
             <h2 id="guide-title">使用指南</h2>
@@ -96,6 +118,7 @@ onBeforeUnmount(() => {
                 :key="c.id"
                 type="button"
                 :class="{ on: i === active }"
+                :aria-current="i === active ? 'page' : undefined"
                 @click="go(i)"
               >
                 <span class="num">{{ c.no }}</span>
@@ -107,7 +130,7 @@ onBeforeUnmount(() => {
           <div class="leaf">
             <header class="leaf-head">
               <span class="kicker">{{ chapter.no }} · {{ chapter.title }}</span>
-              <button class="x" type="button" aria-label="关闭指南" @click="close">
+              <button ref="closeRef" class="x" type="button" aria-label="关闭指南" @click="close">
                 <Icon name="close" :size="16" />
               </button>
             </header>
@@ -188,7 +211,7 @@ onBeforeUnmount(() => {
                   <li>成功后会出现「已克隆」，之后用这个声音朗读</li>
                 </ol>
                 <h4>更换人设</h4>
-                <p>左侧可以看到当前角色。若你有一份角色说明文件（<em>skill.md</em>），可点「上传」选用。</p>
+                <p>左侧可以看到当前角色。若你有一份角色说明文件（<em>skill.md</em>），可点「导入角色」选用。</p>
                 <p>没有自定义文件时，用默认的明日香即可。</p>
               </template>
 
@@ -272,31 +295,28 @@ onBeforeUnmount(() => {
   display: grid;
   place-items: center;
   padding: 24px 16px;
-  background:
-    radial-gradient(720px 420px at 78% 8%, rgba(201, 168, 255, 0.22), transparent 60%),
-    radial-gradient(640px 380px at 12% 92%, rgba(255, 143, 180, 0.2), transparent 58%),
-    rgba(10, 6, 12, 0.62);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: rgba(7, 4, 9, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .book {
-  width: min(920px, 100%);
+  width: min(960px, 100%);
   height: min(640px, calc(100vh - 48px));
   height: min(640px, calc(100dvh - 48px));
   display: grid;
   grid-template-columns: 232px 1fr;
-  border-radius: 22px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  background: linear-gradient(165deg, rgba(36, 22, 40, 0.92), rgba(22, 14, 28, 0.94));
+  background: rgba(23, 15, 28, 0.97);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
 }
 
 .spine {
   padding: 28px 22px 22px;
   border-right: 1px solid var(--border);
-  background:
-    radial-gradient(180px 140px at 20% 0%, rgba(255, 143, 180, 0.16), transparent 70%),
-    rgba(255, 255, 255, 0.03);
+  background: var(--surface-0);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -333,6 +353,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: var(--touch-min);
   padding: 8px 10px;
   border-radius: 11px;
   text-align: left;
@@ -341,13 +362,13 @@ onBeforeUnmount(() => {
   transition: background 0.18s, color 0.18s;
 }
 .toc button:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-1);
   color: var(--text);
 }
 .toc button.on {
-  background: rgba(255, 143, 180, 0.16);
+  background: var(--accent-soft);
   color: #fff;
-  box-shadow: inset 0 0 0 1px rgba(255, 143, 180, 0.28);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
 }
 .num {
   font-family: var(--font-display);
@@ -378,8 +399,8 @@ onBeforeUnmount(() => {
   color: var(--accent-2);
 }
 .x {
-  width: 34px;
-  height: 34px;
+  width: var(--touch-min);
+  height: var(--touch-min);
   border-radius: 10px;
   display: grid;
   place-items: center;
@@ -388,7 +409,7 @@ onBeforeUnmount(() => {
 }
 .x:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-1);
   border-color: var(--border);
 }
 
@@ -415,7 +436,7 @@ onBeforeUnmount(() => {
 .prose p,
 .prose li,
 .prose dd {
-  font-size: 14.5px;
+  font-size: 15px;
   line-height: 1.75;
   color: var(--text-dim);
 }
@@ -472,8 +493,8 @@ onBeforeUnmount(() => {
   font-style: italic;
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(255, 143, 180, 0.12);
-  border: 1px solid rgba(255, 196, 214, 0.28);
+  background: var(--accent-soft);
+  border: 1px solid var(--border-strong);
   color: var(--text);
 }
 
@@ -501,18 +522,18 @@ onBeforeUnmount(() => {
   border-top: 1px solid rgba(255, 196, 214, 0.14);
 }
 .nav-btn {
-  height: 38px;
+  min-height: var(--touch-min);
   padding: 0 16px;
   border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
   color: var(--text-dim);
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-0);
 }
 .nav-btn:hover:not(:disabled) {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-2);
 }
 .nav-btn:disabled {
   opacity: 0.35;
@@ -547,6 +568,11 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 760px) {
+  .veil {
+    padding: 12px;
+    padding-top: max(12px, env(safe-area-inset-top, 0px));
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  }
   .book {
     grid-template-columns: 1fr;
     height: min(720px, calc(100vh - 24px));
@@ -570,13 +596,17 @@ onBeforeUnmount(() => {
   }
   .toc button {
     flex-shrink: 0;
-    padding: 6px 10px;
+    min-height: var(--touch-min);
+    padding: 6px 12px;
   }
   .toc button .num {
     display: none;
   }
   .prose {
     padding: 12px 18px;
+  }
+  .leaf-foot {
+    padding: 12px 16px 14px;
   }
   .prose h3 {
     font-size: 24px;

@@ -274,11 +274,8 @@ watch(
     <div class="ambient" aria-hidden="true">
       <span class="blob b1"></span>
       <span class="blob b2"></span>
-      <span class="blob b3"></span>
       <span class="spark s1"></span>
       <span class="spark s2"></span>
-      <span class="spark s3"></span>
-      <span class="spark s4"></span>
     </div>
 
     <div ref="stageRef" class="live2d-host" :class="{ hidden: status === 'fallback' }"></div>
@@ -286,7 +283,7 @@ watch(
     <!-- 形象/装扮切换（点击它们不触发舞台的「戳一下」） -->
     <div v-if="status === 'ready'" class="stage-actions">
       <button
-        class="switch-btn glass"
+        class="switch-btn"
         :disabled="switching"
         title="换一个形象"
         @click.stop="switchModel"
@@ -296,7 +293,7 @@ watch(
       </button>
       <button
         v-if="hasClothes"
-        class="switch-btn glass"
+        class="switch-btn"
         :disabled="switching"
         title="换一套装扮（同一角色）"
         @click.stop="switchClothes"
@@ -317,7 +314,7 @@ watch(
       </div>
     </div>
 
-    <div class="nameplate glass">
+    <div class="nameplate">
       <span class="dot" :class="{ on: speaking }"></span>
       {{ name }}
       <small>{{ speaking ? '说话中…' : '在线' }}</small>
@@ -351,55 +348,44 @@ watch(
 .blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(42px);
-  opacity: 0.55;
+  filter: blur(58px);
+  opacity: 0.36;
   will-change: transform;
 }
 .blob.b1 {
-  width: 280px;
-  height: 280px;
-  left: -40px;
-  top: 6%;
-  background: radial-gradient(circle, rgba(255, 143, 180, 0.55), transparent 70%);
+  width: 340px;
+  height: 340px;
+  left: -80px;
+  top: 12%;
+  background: radial-gradient(circle, rgba(225, 119, 161, 0.42), transparent 70%);
   animation: float1 14s ease-in-out infinite;
 }
 .blob.b2 {
-  width: 240px;
-  height: 240px;
-  right: -30px;
-  top: 28%;
-  background: radial-gradient(circle, rgba(201, 168, 255, 0.5), transparent 70%);
+  width: 300px;
+  height: 300px;
+  right: -80px;
+  top: 34%;
+  background: radial-gradient(circle, rgba(180, 145, 214, 0.38), transparent 70%);
   animation: float2 18s ease-in-out infinite;
 }
-.blob.b3 {
-  width: 200px;
-  height: 200px;
-  left: 30%;
-  bottom: -20px;
-  background: radial-gradient(circle, rgba(255, 190, 210, 0.38), transparent 70%);
-  animation: float3 16s ease-in-out infinite;
-}
 .stage.talking .blob {
-  opacity: 0.8;
-  filter: blur(36px);
+  opacity: 0.54;
+  filter: blur(50px);
 }
 
 /* 上浮的小光点 */
 .spark {
   position: absolute;
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 0 8px rgba(255, 143, 180, 0.9);
+  box-shadow: 0 0 7px rgba(243, 142, 175, 0.72);
   opacity: 0;
   animation: rise 7s linear infinite;
 }
 .spark.s1 { left: 18%; animation-delay: 0s; }
 .spark.s2 { left: 40%; animation-delay: 1.8s; }
-.spark.s3 { left: 63%; animation-delay: 3.4s; }
-.spark.s4 { left: 82%; animation-delay: 5s; }
-
 .live2d-host {
   position: absolute;
   inset: 0;
@@ -478,8 +464,13 @@ watch(
   bottom: 18px;
   left: 50%;
   transform: translateX(-50%);
+  min-height: 42px;
   padding: 8px 16px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
+  background: rgba(15, 10, 18, 0.74);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(10px);
   font-family: var(--font-display);
   font-size: 16px;
   font-weight: 600;
@@ -503,8 +494,8 @@ watch(
   background: var(--text-faint);
 }
 .dot.on {
-  background: #7be0a4;
-  box-shadow: 0 0 8px #7be0a4;
+  background: var(--success);
+  box-shadow: 0 0 8px rgba(118, 213, 163, 0.72);
 }
 
 .hint {
@@ -521,15 +512,18 @@ watch(
   top: 14px;
   right: 14px;
   display: flex;
-  gap: 8px;
+  gap: 6px;
 }
 .switch-btn {
-  padding: 7px 12px;
-  border-radius: 999px;
+  min-height: var(--touch-min);
+  padding: 0 13px;
+  border-radius: var(--radius-pill);
   font-size: 12px;
   font-weight: 600;
   color: var(--text);
   border: 1px solid var(--border);
+  background: rgba(15, 10, 18, 0.68);
+  backdrop-filter: blur(10px);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -537,7 +531,7 @@ watch(
   transition: opacity 0.18s, transform 0.1s, background 0.18s;
 }
 .switch-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--surface-2);
 }
 .switch-btn:active {
   transform: scale(0.95);
@@ -550,14 +544,14 @@ watch(
 .poke-hint {
   position: absolute;
   z-index: 2;
-  top: 16px;
+  bottom: 72px;
   left: 50%;
   transform: translateX(-50%);
   padding: 5px 12px;
   border-radius: 999px;
   font-size: 12px;
   color: var(--text-dim);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(15, 10, 18, 0.56);
   border: 1px solid var(--border);
   pointer-events: none;
   animation: hintPulse 3s ease-in-out infinite;
@@ -591,10 +585,6 @@ watch(
   0%, 100% { transform: translate(0, 0); }
   50% { transform: translate(-36px, 26px); }
 }
-@keyframes float3 {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(24px, -34px); }
-}
 @keyframes rise {
   0% { transform: translateY(110%) scale(0.6); opacity: 0; }
   15% { opacity: 0.9; }
@@ -613,6 +603,34 @@ watch(
   .halo,
   .orb {
     animation: none;
+  }
+}
+
+@media (max-width: 880px) {
+  .stage-actions {
+    top: 70px;
+    right: 8px;
+  }
+  .switch-btn {
+    width: var(--touch-min);
+    padding: 0;
+    font-size: 0;
+    gap: 0;
+  }
+  .nameplate {
+    bottom: 10px;
+  }
+  .poke-hint {
+    display: none;
+  }
+}
+
+@media (min-width: 881px) and (max-width: 1100px) {
+  .switch-btn {
+    width: var(--touch-min);
+    padding: 0;
+    font-size: 0;
+    gap: 0;
   }
 }
 </style>

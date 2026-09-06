@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useAuth } from '../composables/useAuth.js'
 import { checkSessionId } from '../api/index.js'
 
@@ -13,23 +13,29 @@ const password = ref('')
 const password2 = ref('')
 const loading = ref(false)
 const error = ref('')
+const accountInput = ref(null)
+let previousHtmlOverflow = ''
+let previousBodyOverflow = ''
 
 const { login, register } = useAuth()
 
 const ACCOUNT_HINT = '字母、数字、下划线、连字符，2~32 位'
 
 onMounted(() => {
-  // 只锁 body，滚动发生在 .gate 内部，避免双滚动条
+  previousHtmlOverflow = document.documentElement.style.overflow
+  previousBodyOverflow = document.body.style.overflow
   document.documentElement.style.overflow = 'hidden'
   document.body.style.overflow = 'hidden'
 })
 onBeforeUnmount(() => {
-  document.documentElement.style.overflow = ''
-  document.body.style.overflow = ''
+  document.documentElement.style.overflow = previousHtmlOverflow
+  document.body.style.overflow = previousBodyOverflow
 })
 
-function enterAuth() {
+async function enterAuth() {
   phase.value = 'auth'
+  await nextTick()
+  accountInput.value?.focus()
 }
 
 function backToMyth() {
@@ -71,141 +77,152 @@ async function submit() {
   }
 }
 
-function switchMode(m) {
+async function switchMode(m) {
   mode.value = m
   error.value = ''
   password2.value = ''
+  await nextTick()
+  accountInput.value?.focus()
 }
 </script>
 
 <template>
-  <div class="gate" :class="phase">
+  <div class="gate" :class="`phase-${phase}`">
     <div class="veil" aria-hidden="true">
       <span class="orb o1"></span>
       <span class="orb o2"></span>
-      <span class="orb o3"></span>
-      <span class="dust"></span>
     </div>
-    <div class="gate-spacer" aria-hidden="true"></div>
 
-    <!-- ① 神话传说：整块居中 + 高对比文字 -->
-    <section v-if="phase === 'myth'" class="myth" key="myth">
-      <div class="myth-panel">
-        <p class="eyebrow">源自希腊神话 · Pygmalion</p>
+    <main class="gate-main">
+      <!-- ① 神话传说：品牌时刻 -->
+      <section v-if="phase === 'myth'" class="myth" key="myth">
+        <div class="myth-panel">
+          <p class="eyebrow">源自希腊神话 · Pygmalion</p>
 
-        <div class="portrait-wrap">
-          <div class="ring r1"></div>
-          <div class="ring r2"></div>
-          <img
-            class="portrait"
-            src="/galatea-avatar.png"
-            alt="Galatea"
-            width="200"
-            height="200"
-          />
+          <div class="portrait-wrap">
+            <div class="ring r1"></div>
+            <div class="ring r2"></div>
+            <img
+              class="portrait"
+              src="/galatea-avatar.png"
+              alt="Galatea"
+              width="200"
+              height="200"
+            />
+          </div>
+
+          <h1 class="brand">
+            <span class="latin">Galatea</span>
+            <span class="cn">伽拉忒亚</span>
+          </h1>
+          <p class="lede">她曾是一块冷石，后来学会了听见。</p>
+
+          <div class="tale">
+            <p>
+              皮格马利翁把全部温柔凿进一尊少女像。爱神回应了他的愿望——
+              <em>温热漫上来，石头第一次听见了人间。</em>
+            </p>
+            <p class="tale-bridge">
+              定义你的专属伽拉忒亚，再用声音把呼吸还给她。
+            </p>
+          </div>
+
+          <button type="button" class="enter" @click="enterAuth">
+            <span>赋予她声音</span>
+            <small>登录或注册</small>
+          </button>
+          <button type="button" class="guide-link" @click="emit('guide')">先看看怎么用</button>
+        </div>
+      </section>
+
+      <!-- ② 登录 / 注册 -->
+      <div v-else class="card" key="auth" :aria-busy="loading">
+        <button type="button" class="back" @click="backToMyth">← 回望传说</button>
+
+        <div class="logo" aria-hidden="true">
+          <img class="mark" src="/galatea-avatar.png" alt="" width="64" height="64" />
+        </div>
+        <h2 class="auth-title">Galatea</h2>
+        <p class="sub">欢迎回来，继续与她相遇</p>
+        <button type="button" class="guide-link auth" @click="emit('guide')">第一次来？查看使用指南</button>
+
+        <div class="tabs" role="tablist" aria-label="账号操作">
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="mode === 'login'"
+            :class="{ active: mode === 'login' }"
+            @click="switchMode('login')"
+          >
+            登录
+          </button>
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="mode === 'register'"
+            :class="{ active: mode === 'register' }"
+            @click="switchMode('register')"
+          >
+            注册
+          </button>
         </div>
 
-        <h1 class="brand">
-          <span class="latin">Galatea</span>
-          <span class="cn">伽拉忒亚</span>
-        </h1>
-        <p class="lede">她曾是一块冷石，后来学会了听见。</p>
-
-        <div class="tale">
-          <p>
-            塞浦路斯的工房里，雕刀日夜落下。皮格马利翁把全部温柔凿进一尊少女像——
-            眼睑低垂，唇角像藏着未说完的话。灯火将熄时他仍凝望着她，
-            仿佛再近一步，石心就会轻轻回应。
-          </p>
-          <p>
-            爱神被这份近乎固执的虔诚打动，在祭火中悄声说：「去亲吻你所造的生命吧。」
-            他吻上大理石的唇——
-            <em>温热漫上来，脉搏醒来，石头第一次听见了人间。</em>
-          </p>
-          <p class="tale-bridge">
-            Galatea 想做同一次奇迹：你来定义自己的专属伽拉忒亚，再用语音把呼吸还给她——
-            让你能真正，与她对话。
-          </p>
-        </div>
-
-        <button type="button" class="enter" @click="enterAuth">
-          <span>赋予她声音</span>
-          <small>Enter · 进入</small>
-        </button>
-        <button type="button" class="guide-link" @click="emit('guide')">先看看怎么用</button>
-      </div>
-    </section>
-
-    <!-- ② 登录 / 注册 -->
-    <div v-else class="card glass" key="auth">
-      <button type="button" class="back" @click="backToMyth">← 回望传说</button>
-
-      <div class="logo" aria-hidden="true">
-        <img class="mark" src="/galatea-avatar.png" alt="" width="64" height="64" />
-      </div>
-      <h2 class="auth-title">Galatea</h2>
-      <p class="sub">语音 AI 伴侣 · 请先登录或注册</p>
-      <button type="button" class="guide-link auth" @click="emit('guide')">使用指南</button>
-
-      <div class="tabs">
-        <button type="button" :class="{ active: mode === 'login' }" @click="switchMode('login')">
-          登录
-        </button>
-        <button
-          type="button"
-          :class="{ active: mode === 'register' }"
-          @click="switchMode('register')"
-        >
-          注册
-        </button>
-      </div>
-
-      <form class="form" @submit.prevent="submit">
-        <label>
-          <span>账号</span>
+        <form class="form" @submit.prevent="submit">
+          <label for="account">
+            <span>账号</span>
+          </label>
           <input
+            id="account"
+            ref="accountInput"
             v-model="sessionId"
             type="text"
             placeholder="你的唯一用户名，如 alice_01"
             autocomplete="username"
+            :aria-describedby="mode === 'register' ? 'account-hint' : undefined"
           />
-          <small>{{ ACCOUNT_HINT }}</small>
-        </label>
+          <small v-if="mode === 'register'" id="account-hint">{{ ACCOUNT_HINT }}</small>
 
-        <label>
-          <span>密码</span>
+          <label for="password">
+            <span>密码</span>
+          </label>
           <input
+            id="password"
             v-model="password"
             type="password"
             placeholder="至少 4 位"
-            autocomplete="current-password"
+            :autocomplete="mode === 'register' ? 'new-password' : 'current-password'"
           />
-        </label>
 
-        <label v-if="mode === 'register'">
-          <span>确认密码</span>
-          <input
-            v-model="password2"
-            type="password"
-            placeholder="再输入一次密码"
-            autocomplete="new-password"
-          />
-        </label>
+          <template v-if="mode === 'register'">
+            <label for="password-confirm">
+              <span>确认密码</span>
+            </label>
+            <input
+              id="password-confirm"
+              v-model="password2"
+              type="password"
+              placeholder="再输入一次密码"
+              autocomplete="new-password"
+            />
+          </template>
 
-        <p v-if="error" class="error">{{ error }}</p>
+          <p v-if="error" class="error" role="alert">{{ error }}</p>
 
-        <button class="submit" type="submit" :disabled="loading">
-          {{ loading ? '处理中…' : mode === 'login' ? '登录' : '注册并进入' }}
-        </button>
-      </form>
-    </div>
-    <div class="gate-spacer" aria-hidden="true"></div>
-    <a
-      class="beian"
-      href="https://beian.miit.gov.cn/"
-      target="_blank"
-      rel="noopener noreferrer"
-    >浙ICP备2026072556号-1</a>
+          <button class="submit" type="submit" :disabled="loading">
+            {{ loading ? '处理中…' : mode === 'login' ? '登录' : '注册并进入' }}
+          </button>
+        </form>
+      </div>
+    </main>
+
+    <footer class="gate-foot">
+      <a
+        class="beian"
+        href="https://beian.miit.gov.cn/"
+        target="_blank"
+        rel="noopener noreferrer"
+      >浙ICP备2026072556号-1</a>
+    </footer>
   </div>
 </template>
 
@@ -216,34 +233,37 @@ function switchMode(m) {
   position: fixed;
   inset: 0;
   z-index: 50;
-  width: auto;
-  height: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  padding: max(24px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
-    max(24px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  width: 100%;
+  height: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
-.gate-spacer {
-  flex: 1 0 0;
-  min-height: 0;
-  width: 100%;
-  pointer-events: none;
-}
-.beian {
+.gate-main {
   position: relative;
   z-index: 1;
-  flex-shrink: 0;
-  padding: 10px 12px 4px;
+  width: 100%;
+  min-height: calc(100% - 40px);
+  display: grid;
+  place-items: center;
+  padding: max(28px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
+    16px max(16px, env(safe-area-inset-left, 0px));
+}
+.gate-foot {
+  position: relative;
+  z-index: 1;
+  min-height: 40px;
+  display: grid;
+  place-items: center;
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+}
+.beian {
+  padding: 8px 12px;
   font-size: 12px;
   letter-spacing: 0.04em;
-  color: rgba(255, 232, 240, 0.55);
+  color: var(--text-faint);
   text-decoration: none;
   text-align: center;
 }
@@ -260,15 +280,15 @@ function switchMode(m) {
 .orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(48px);
-  opacity: 0.72;
+  filter: blur(64px);
+  opacity: 0.42;
 }
 .o1 {
   width: 360px;
   height: 360px;
   left: 10%;
   top: 8%;
-  background: radial-gradient(circle, rgba(255, 176, 200, 0.55), transparent 70%);
+  background: radial-gradient(circle, rgba(238, 142, 175, 0.46), transparent 70%);
   animation: drift 16s ease-in-out infinite;
 }
 .o2 {
@@ -276,41 +296,25 @@ function switchMode(m) {
   height: 380px;
   right: 8%;
   bottom: 10%;
-  background: radial-gradient(circle, rgba(201, 168, 255, 0.55), transparent 70%);
+  background: radial-gradient(circle, rgba(189, 157, 222, 0.4), transparent 70%);
   animation: drift 20s ease-in-out infinite reverse;
 }
-.o3 {
-  width: 220px;
-  height: 220px;
-  left: 45%;
-  top: 55%;
-  background: radial-gradient(circle, rgba(255, 200, 220, 0.3), transparent 70%);
-  animation: drift 14s ease-in-out infinite 1s;
-}
-.dust {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.35) 0.6px, transparent 0.7px);
-  background-size: 120px 120px;
-  opacity: 0.05;
-}
-
 /* —— Myth：屏幕正中一整块 —— */
 .myth {
   position: relative;
   z-index: 1;
-  width: min(560px, 100%);
+  width: min(600px, 100%);
   flex-shrink: 0;
   animation: riseIn 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .myth-panel {
   text-align: center;
-  padding: 28px 26px 30px;
-  border-radius: 22px;
-  background: rgba(22, 14, 34, 0.88);
-  border: 1px solid rgba(255, 190, 220, 0.35);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(14px);
+  padding: 32px 34px 30px;
+  border-radius: var(--radius-lg);
+  background: rgba(23, 15, 28, 0.91);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
 }
 .eyebrow {
   font-family: var(--myth-cn);
@@ -380,17 +384,17 @@ function switchMode(m) {
   font-weight: 600;
 }
 .tale {
-  margin: 0 auto 22px;
-  max-width: 32em;
+  margin: 0 auto 24px;
+  max-width: 30em;
   text-align: left;
 }
 .tale p {
   font-family: var(--myth-cn);
   font-size: 15px;
-  line-height: 1.85;
-  color: #ffffff;
-  font-weight: 500;
-  margin: 0 0 12px;
+  line-height: 1.8;
+  color: var(--text-dim);
+  font-weight: 400;
+  margin: 0 0 14px;
 }
 .tale em {
   font-style: normal;
@@ -401,7 +405,7 @@ function switchMode(m) {
   margin-top: 2px !important;
   margin-bottom: 0 !important;
   font-size: 14px !important;
-  color: #efe6ff !important;
+  color: var(--text) !important;
   padding-top: 12px;
   border-top: 1px solid rgba(255, 200, 220, 0.35);
 }
@@ -410,13 +414,14 @@ function switchMode(m) {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  min-width: 200px;
-  padding: 14px 36px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 200, 220, 0.5);
-  background: linear-gradient(135deg, #ff8fb4, #c9a8ff);
+  min-width: 220px;
+  min-height: 54px;
+  padding: 10px 36px 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--accent-grad);
   color: #fff;
-  box-shadow: 0 10px 28px rgba(255, 143, 180, 0.35);
+  box-shadow: 0 12px 30px rgba(187, 83, 125, 0.24);
   cursor: pointer;
   transition: transform 0.18s ease, filter 0.18s ease;
 }
@@ -447,7 +452,9 @@ function switchMode(m) {
   font-family: var(--myth-cn);
   font-size: 13px;
   letter-spacing: 0.12em;
-  color: rgba(255, 232, 240, 0.72);
+  min-height: 40px;
+  padding: 0 10px;
+  color: var(--text-dim);
   cursor: pointer;
   text-decoration: none;
 }
@@ -466,10 +473,13 @@ function switchMode(m) {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 400px;
-  flex-shrink: 0;
-  padding: 28px 28px 32px;
-  border-radius: var(--radius);
+  max-width: 420px;
+  padding: 30px 30px 34px;
+  border-radius: var(--radius-lg);
+  background: rgba(23, 15, 28, 0.93);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
   text-align: center;
   animation: riseIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -479,7 +489,8 @@ function switchMode(m) {
   left: 14px;
   font-size: 12px;
   color: var(--text-faint);
-  padding: 4px 8px;
+  min-height: 40px;
+  padding: 0 10px;
   border-radius: 8px;
   background: transparent;
   cursor: pointer;
@@ -517,13 +528,13 @@ function switchMode(m) {
   display: flex;
   gap: 8px;
   margin-bottom: 20px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.18);
   padding: 4px;
   border-radius: 12px;
 }
 .tabs button {
   flex: 1;
-  height: 36px;
+  min-height: var(--touch-min);
   border-radius: 9px;
   font-size: 14px;
   font-weight: 600;
@@ -532,14 +543,15 @@ function switchMode(m) {
   background: transparent;
 }
 .tabs button.active {
-  background: var(--accent-grad);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
   color: #fff;
 }
 .form {
   text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
 }
 label span {
   display: block;
@@ -547,25 +559,40 @@ label span {
   color: var(--text-dim);
   margin-bottom: 6px;
 }
-label input {
+.form input {
   width: 100%;
-  height: 42px;
-  border-radius: 10px;
+  height: var(--control-h);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.045);
   color: var(--text);
   padding: 0 12px;
-  font-size: 15px;
+  font-size: 16px;
   outline: none;
+  appearance: none;
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
 }
-label input:focus {
-  border-color: var(--accent-2);
+.form input:hover {
+  background: rgba(255, 255, 255, 0.065);
 }
-label small {
+.form input:focus {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.075);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.form input:-webkit-autofill,
+.form input:-webkit-autofill:hover,
+.form input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+  box-shadow: 0 0 0 1000px #211722 inset, 0 0 0 3px transparent;
+  transition: background-color 9999s ease-out;
+}
+.form small {
   display: block;
   margin-top: 4px;
   font-size: 11px;
-  color: var(--text-faint);
+  color: var(--text-dim);
 }
 .error {
   font-size: 12px;
@@ -575,13 +602,13 @@ label small {
   border-radius: 8px;
 }
 .submit {
-  height: 44px;
-  border-radius: 12px;
+  min-height: 48px;
+  border-radius: var(--radius-pill);
   background: var(--accent-grad);
   color: #fff;
   font-weight: 700;
   font-size: 15px;
-  margin-top: 4px;
+  margin-top: 10px;
   cursor: pointer;
   border: none;
 }

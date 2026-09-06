@@ -122,27 +122,29 @@ function activate(id) {
 
 <template>
   <aside class="sidebar glass">
-    <div class="brand">
-      <div class="logo">G</div>
-      <div>
-        <h1>Galatea</h1>
-        <p class="user-id" :title="sessionId">已登录</p>
+    <div class="sidebar-head">
+      <div class="brand">
+        <div class="logo">G</div>
+        <div class="brand-copy">
+          <h1>Galatea</h1>
+          <p class="user-id" :title="sessionId">@{{ sessionId }}</p>
+        </div>
       </div>
-    </div>
 
-    <div class="section-title">
-      <span>人设</span>
-      <button class="add" :disabled="uploading" @click="pickFile">
-        <Icon name="plus" :size="14" />
-        上传
-      </button>
-      <input
-        ref="fileInput"
-        type="file"
-        accept=".md,text/markdown"
-        hidden
-        @change="onFile"
-      />
+      <div class="section-title">
+        <span>我的角色</span>
+        <button class="add" :disabled="uploading" @click="pickFile">
+          <Icon name="plus" :size="14" />
+          导入角色
+        </button>
+        <input
+          ref="fileInput"
+          type="file"
+          accept=".md,text/markdown"
+          hidden
+          @change="onFile"
+        />
+      </div>
     </div>
 
     <p v-if="error" class="error">{{ error }}</p>
@@ -170,6 +172,7 @@ function activate(id) {
         :key="s.id"
         class="skill"
         :class="{ active: s.active }"
+        :aria-current="s.active ? 'true' : undefined"
         @click="activate(s.id)"
       >
         <div class="skill-top">
@@ -205,9 +208,14 @@ function activate(id) {
   display: flex;
   flex-direction: column;
   height: 100%;
-  border-radius: var(--radius);
-  padding: 18px;
-  gap: 16px;
+  border-radius: var(--radius-lg);
+  padding: 18px 16px;
+  gap: 14px;
+}
+.sidebar-head {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 .brand {
   display: flex;
@@ -218,13 +226,14 @@ function activate(id) {
   width: 42px;
   height: 42px;
   border-radius: 13px;
-  background: var(--accent-grad);
+  background: var(--accent-soft);
+  border: 1px solid var(--border-strong);
   display: grid;
   place-items: center;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 24px;
-  color: #fff;
+  color: #f6c2d5;
 }
 .brand h1 {
   font-family: var(--font-display);
@@ -234,11 +243,15 @@ function activate(id) {
   line-height: 1.1;
 }
 .brand p.user-id {
+  max-width: 138px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 11px;
-  color: var(--gold);
+  color: var(--text-faint);
   font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 3px;
 }
 
 .section-title {
@@ -251,13 +264,14 @@ function activate(id) {
   letter-spacing: 0.04em;
 }
 .add {
+  min-height: 36px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
   font-size: 12px;
-  padding: 5px 10px;
+  padding: 0 11px;
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-1);
   border: 1px solid var(--border);
   color: var(--text);
 }
@@ -277,10 +291,10 @@ function activate(id) {
 }
 
 .preview {
-  border: 1px dashed var(--accent-2);
-  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
   padding: 12px;
-  background: rgba(255, 143, 180, 0.1);
+  background: var(--accent-soft);
 }
 .preview-head {
   display: flex;
@@ -292,8 +306,8 @@ function activate(id) {
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 6px;
-  background: var(--gold);
-  color: #fff;
+  background: var(--surface-2);
+  color: var(--text-dim);
   font-weight: 700;
 }
 .desc {
@@ -340,16 +354,16 @@ function activate(id) {
   text-align: left;
   padding: 12px;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border);
+  background: transparent;
+  border: 1px solid transparent;
   transition: all 0.18s;
 }
 .skill:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-1);
 }
 .skill.active {
-  border-color: rgba(255, 143, 180, 0.55);
-  background: rgba(255, 143, 180, 0.1);
+  border-color: var(--border-strong);
+  background: var(--accent-soft);
 }
 .skill-top {
   display: flex;
@@ -369,7 +383,7 @@ function activate(id) {
 }
 .check {
   margin-left: auto;
-  color: var(--gold);
+  color: var(--accent);
   display: inline-flex;
 }
 .skill-desc {
@@ -378,6 +392,7 @@ function activate(id) {
   color: var(--text-dim);
   line-height: 1.5;
   display: -webkit-box;
+  line-clamp: 3;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -396,8 +411,8 @@ function activate(id) {
   border-radius: var(--radius-sm);
   font-size: 13px;
   color: var(--text-dim);
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid transparent;
+  background: var(--surface-0);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -427,39 +442,79 @@ function activate(id) {
 
 @media (max-width: 880px) {
   .sidebar {
-    flex-direction: row;
-    align-items: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "head foot"
+      "error error"
+      "preview preview"
+      "list list";
     height: auto;
     padding: 10px 12px;
-    gap: 12px;
+    gap: 8px;
+  }
+  .sidebar-head {
+    grid-area: head;
+    min-width: 0;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
   }
   .brand {
+    min-width: 0;
     flex-shrink: 0;
+  }
+  .logo {
+    width: 40px;
+    height: 40px;
   }
   .brand h1 {
     font-size: 20px;
   }
+  .brand-copy {
+    display: none;
+  }
+  .section-title {
+    min-width: 0;
+  }
   .section-title span {
     display: none;
   }
+  .add {
+    min-height: var(--touch-min);
+    padding: 0 12px;
+  }
+  .error {
+    grid-area: error;
+  }
+  .preview {
+    grid-area: preview;
+  }
   .list {
+    grid-area: list;
     flex-direction: row;
     overflow-x: auto;
     overflow-y: hidden;
+    padding-bottom: 2px;
   }
   .skill {
     min-width: 148px;
     padding: 8px 10px;
   }
   .skill-desc {
+    line-clamp: 1;
     -webkit-line-clamp: 1;
   }
   .foot {
+    grid-area: foot;
     flex-shrink: 0;
+    flex-direction: row;
+    gap: 4px;
   }
   .logout {
-    width: auto;
-    padding: 0 12px;
+    width: var(--touch-min);
+    min-width: var(--touch-min);
+    padding: 0;
     font-size: 0;
     gap: 0;
   }

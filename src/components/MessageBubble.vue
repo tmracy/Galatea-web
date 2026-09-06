@@ -122,7 +122,7 @@ onBeforeUnmount(stopWait)
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  margin: 10px 0;
+  margin: 12px 0;
 }
 .row.user {
   justify-content: flex-end;
@@ -132,7 +132,7 @@ onBeforeUnmount(stopWait)
   justify-content: flex-start;
 }
 .stack {
-  max-width: 78%;
+  max-width: 82%;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -144,8 +144,8 @@ onBeforeUnmount(stopWait)
   align-items: flex-start;
 }
 .ava {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   flex-shrink: 0;
   background:
@@ -155,10 +155,10 @@ onBeforeUnmount(stopWait)
   margin-bottom: 2px;
 }
 .bubble {
-  padding: 10px 14px;
+  padding: 11px 14px;
   border-radius: 16px;
-  font-size: 14px;
-  line-height: 1.62;
+  font-size: 15px;
+  line-height: 1.68;
   word-break: break-word;
   white-space: pre-wrap;
 }
@@ -170,7 +170,7 @@ onBeforeUnmount(stopWait)
   background: var(--user-bubble);
   color: #fff;
   border-bottom-right-radius: 5px;
-  box-shadow: 0 8px 20px rgba(240, 107, 155, 0.28);
+  box-shadow: 0 8px 20px rgba(95, 38, 65, 0.18);
 }
 .bubble.assistant {
   background: var(--ai-bubble);
@@ -180,8 +180,8 @@ onBeforeUnmount(stopWait)
 }
 .acts {
   display: flex;
-  gap: 2px;
-  opacity: 0.45;
+  gap: 4px;
+  opacity: 0.5;
   transition: opacity 0.18s;
 }
 .row:hover .acts,
@@ -189,16 +189,16 @@ onBeforeUnmount(stopWait)
   opacity: 1;
 }
 .act {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
   color: var(--text-dim);
   display: grid;
   place-items: center;
 }
 .act:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--surface-2);
 }
 .wait {
   display: inline-flex;
@@ -206,8 +206,8 @@ onBeforeUnmount(stopWait)
   gap: 10px;
 }
 .wait-copy {
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
-  font-size: 13.5px;
+  font-family: var(--font-display);
+  font-size: 14px;
   font-style: italic;
   color: var(--text-dim);
   animation: copyIn 0.35s ease-out;
@@ -231,7 +231,7 @@ onBeforeUnmount(stopWait)
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--gold);
+  background: var(--accent);
   animation: blink 1.2s infinite ease-in-out;
 }
 .typing i:nth-child(2) {
@@ -277,7 +277,11 @@ onBeforeUnmount(stopWait)
 }
 @media (hover: none) {
   .acts {
-    opacity: 0.85;
+    opacity: 1;
+  }
+  .act {
+    width: 36px;
+    height: 36px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

@@ -161,6 +161,7 @@ onBeforeUnmount(stopFunLines)
           webkitdirectory
           directory
           multiple
+          aria-label="选择要分析的文件夹"
           :disabled="busy"
           @change="onFolderPick"
         />
@@ -190,6 +191,7 @@ onBeforeUnmount(stopFunLines)
           <div class="bubble-body">{{ m.content }}</div>
           <button
             v-if="m.download"
+            type="button"
             class="dl-btn"
             @click="downloadReport(m.download)"
           >
@@ -209,22 +211,23 @@ onBeforeUnmount(stopFunLines)
             ? '继续追问，例如：第二节再写深入一点'
             : '例如：帮我总结这些报告的核心结论'
         "
+        aria-label="输入分析任务"
         @keydown.enter.exact.prevent="run"
       ></textarea>
 
       <div class="actions">
-        <button class="run" :disabled="!canRun" @click="run">
+        <button type="button" class="run" :disabled="!canRun" @click="run">
           {{ running ? '分析中…' : hasChat ? '继续对话' : '开始分析' }}
         </button>
-        <button class="ghost" :disabled="busy" @click="reset">清空</button>
+        <button type="button" class="ghost" :disabled="busy" @click="reset">清空</button>
       </div>
 
-      <div v-if="running" class="thinking">
+      <div v-if="running" class="thinking" role="status" aria-live="polite">
         <span class="spinner"></span>
         <span class="fun">{{ funLine }}</span>
       </div>
 
-      <div v-if="errorMsg" class="error">{{ errorMsg }}</div>
+      <div v-if="errorMsg" class="error" role="alert">{{ errorMsg }}</div>
     </div>
   </div>
 </template>
@@ -247,22 +250,22 @@ onBeforeUnmount(stopFunLines)
 .blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(48px);
-  opacity: 0.4;
+  filter: blur(58px);
+  opacity: 0.22;
 }
 .blob.b1 {
   width: 260px;
   height: 260px;
   left: -40px;
   top: -30px;
-  background: radial-gradient(circle, rgba(201, 168, 255, 0.55), transparent 70%);
+  background: radial-gradient(circle, rgba(185, 150, 218, 0.42), transparent 70%);
 }
 .blob.b2 {
   width: 240px;
   height: 240px;
   right: -30px;
   bottom: -20px;
-  background: radial-gradient(circle, rgba(255, 143, 180, 0.45), transparent 70%);
+  background: radial-gradient(circle, rgba(222, 119, 160, 0.34), transparent 70%);
 }
 
 .inner {
@@ -271,7 +274,7 @@ onBeforeUnmount(stopFunLines)
   width: 100%;
   height: 100%;
   padding: 22px;
-  padding-top: 52px;
+  padding-top: 74px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -301,12 +304,12 @@ onBeforeUnmount(stopFunLines)
   height: 42px;
   flex: 0 0 42px;
   border-radius: 12px;
-  background: var(--accent-grad);
+  background: var(--accent-soft);
+  border: 1px solid var(--border-strong);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  box-shadow: var(--shadow);
+  color: #f3bed2;
 }
 .head h2 {
   font-family: var(--font-display);
@@ -322,18 +325,18 @@ onBeforeUnmount(stopFunLines)
 .drop {
   position: relative;
   display: block;
-  border: 1.5px dashed var(--border);
+  border: 1px dashed var(--border);
   border-radius: var(--radius);
-  background: var(--panel);
+  background: var(--surface-0);
   cursor: pointer;
   transition: border-color 0.18s, background 0.18s;
 }
 .drop:hover {
   border-color: var(--accent);
-  background: var(--panel-strong);
+  background: var(--surface-1);
 }
 .drop.active {
-  border-color: var(--accent-2);
+  border-color: var(--border-strong);
   border-style: solid;
 }
 .drop input {
@@ -354,7 +357,7 @@ onBeforeUnmount(stopFunLines)
   text-align: center;
 }
 .drop-icon {
-  color: var(--gold);
+  color: var(--accent);
   margin-bottom: 4px;
 }
 .drop-body strong {
@@ -379,14 +382,14 @@ onBeforeUnmount(stopFunLines)
   max-width: 92%;
   padding: 10px 12px;
   border-radius: 14px;
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 15px;
+  line-height: 1.68;
   white-space: pre-wrap;
   word-break: break-word;
 }
 .bubble.user {
   align-self: flex-end;
-  background: var(--accent-grad);
+  background: var(--user-bubble);
   color: #fff;
 }
 .bubble.assistant {
@@ -400,7 +403,8 @@ onBeforeUnmount(stopFunLines)
 }
 .dl-btn {
   margin-top: 8px;
-  padding: 4px 10px;
+  min-height: 36px;
+  padding: 0 11px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
@@ -416,16 +420,17 @@ onBeforeUnmount(stopFunLines)
   resize: vertical;
   min-height: 74px;
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
-  background: var(--panel);
+  background: var(--surface-1);
   color: var(--text);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.5;
   outline: none;
 }
 .query:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 .query:disabled {
   opacity: 0.6;
@@ -437,21 +442,23 @@ onBeforeUnmount(stopFunLines)
 }
 .run {
   flex: 1;
-  padding: 12px;
-  border-radius: 999px;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: var(--radius-pill);
   font-size: 14px;
   font-weight: 700;
   color: #fff;
   background: var(--accent-grad);
-  box-shadow: var(--shadow);
+  box-shadow: 0 10px 24px rgba(187, 83, 125, 0.2);
 }
 .run:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 .ghost {
-  padding: 12px 18px;
-  border-radius: 999px;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: var(--radius-pill);
   font-size: 14px;
   color: var(--text-dim);
   border: 1px solid var(--border);
@@ -466,7 +473,7 @@ onBeforeUnmount(stopFunLines)
   gap: 10px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: var(--panel);
+  background: var(--surface-1);
   border: 1px solid var(--border);
 }
 .spinner {
@@ -474,7 +481,7 @@ onBeforeUnmount(stopFunLines)
   height: 16px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.2);
-  border-top-color: var(--gold);
+  border-top-color: var(--accent);
   animation: spin 0.8s linear infinite;
 }
 .fun {
@@ -494,6 +501,22 @@ onBeforeUnmount(stopFunLines)
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 880px) {
+  .inner {
+    padding: 70px 16px 16px;
+    gap: 12px;
+  }
+  .query {
+    font-size: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
   }
 }
 </style>
