@@ -450,8 +450,13 @@ function activate(id) {
       "preview preview"
       "list list";
     height: auto;
-    padding: 10px 12px;
+    padding: max(10px, env(safe-area-inset-top, 0px)) 12px 10px;
     gap: 8px;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: none;
+    background: rgba(17, 11, 20, 0.94);
   }
   .sidebar-head {
     grid-area: head;
@@ -472,6 +477,10 @@ function activate(id) {
     font-size: 20px;
   }
   .brand-copy {
+    display: block;
+    min-width: 0;
+  }
+  .brand p.user-id {
     display: none;
   }
   .section-title {
@@ -490,6 +499,9 @@ function activate(id) {
   .preview {
     grid-area: preview;
   }
+  .preview-actions button {
+    min-height: var(--touch-min);
+  }
   .list {
     grid-area: list;
     flex-direction: row;
@@ -499,6 +511,7 @@ function activate(id) {
   }
   .skill {
     min-width: 148px;
+    min-height: 52px;
     padding: 8px 10px;
   }
   .skill-desc {

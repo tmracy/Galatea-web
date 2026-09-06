@@ -522,7 +522,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 880px) {
   .inner {
-    padding: 70px 14px 14px;
+    padding: max(18px, env(safe-area-inset-top, 0px)) 14px 14px;
     gap: 10px;
   }
   .head p {

@@ -284,6 +284,19 @@ onBeforeUnmount(stopWait)
     height: 36px;
   }
 }
+@media (max-width: 880px) {
+  .row {
+    margin: 10px 0;
+  }
+  .stack {
+    max-width: 88%;
+  }
+  .bubble {
+    padding: 10px 13px;
+    font-size: 14.5px;
+    line-height: 1.65;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .row.user,
   .wait-copy,

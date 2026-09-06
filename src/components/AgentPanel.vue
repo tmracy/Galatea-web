@@ -506,7 +506,7 @@ onBeforeUnmount(stopFunLines)
 
 @media (max-width: 880px) {
   .inner {
-    padding: 70px 16px 16px;
+    padding: max(20px, env(safe-area-inset-top, 0px)) 16px 16px;
     gap: 12px;
   }
   .query {

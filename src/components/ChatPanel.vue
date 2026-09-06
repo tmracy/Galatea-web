@@ -815,19 +815,48 @@ onBeforeUnmount(abortFly)
 }
 
 @media (max-width: 880px) {
+  .chat {
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: rgba(16, 10, 19, 0.72);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
   .chat-head {
-    min-height: 56px;
-    padding-left: 14px;
+    min-height: calc(58px + env(safe-area-inset-top, 0px));
+    padding: max(8px, env(safe-area-inset-top, 0px)) 8px 8px 14px;
+    background: rgba(17, 11, 20, 0.82);
+  }
+  .title {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .head-actions {
+    gap: 2px;
   }
   .voice-tag {
     display: none;
   }
+  .confirm {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+  }
+  .confirm span {
+    flex-basis: 100%;
+  }
+  .confirm .ghost,
+  .confirm .ok {
+    flex: 1;
+    min-height: var(--touch-min);
+  }
   .list {
-    padding: 12px 12px 18px;
+    padding: 10px 12px 18px;
   }
   .composer {
     padding: 10px;
-    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+    background: rgba(17, 11, 20, 0.9);
   }
   .composer input {
     font-size: 16px;

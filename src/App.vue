@@ -17,7 +17,7 @@ const speaking = ref(false)
 const activeSkill = ref({ id: 'hh', name: '明日香' })
 const middleMode = ref('companion') // companion | agent | emotion
 const guideOpen = ref(false)
-const stageCollapsed = ref(false)
+const mobileView = ref('companion') // role | companion | agent | emotion
 
 const { isLoggedIn, currentSessionId, logout } = useAuth()
 
@@ -44,9 +44,20 @@ function onActivate(skill) {
   // 不再用 skill.id 覆盖用户 session_id
 }
 
+function setMobileView(view) {
+  mobileView.value = view
+  middleMode.value =
+    view === 'agent' ? 'agent' : view === 'emotion' ? 'emotion' : 'companion'
+  if (view === 'role') {
+    nextTick(() => window.dispatchEvent(new Event('resize')))
+  }
+}
+
 // Live2D 不能用 display:none，切回陪伴时触发 resize 以免画布尺寸错乱
 watch(middleMode, (m) => {
-  if (m !== 'companion') stageCollapsed.value = false
+  if (m === 'agent') mobileView.value = 'agent'
+  else if (m === 'emotion') mobileView.value = 'emotion'
+  else if (mobileView.value !== 'role') mobileView.value = 'companion'
   if (m === 'companion') {
     nextTick(() => window.dispatchEvent(new Event('resize')))
   }
@@ -60,7 +71,7 @@ watch(middleMode, (m) => {
     class="app"
     :class="{
       'focus-stage': middleMode !== 'companion',
-      'stage-collapsed': stageCollapsed,
+      [`mobile-${mobileView}`]: true,
     }"
   >
     <SkillSidebar
@@ -100,22 +111,12 @@ watch(middleMode, (m) => {
           <Icon name="book" :size="15" />
           <span>指南</span>
         </button>
-        <button
-          v-if="middleMode === 'companion'"
-          class="stage-toggle"
-          type="button"
-          :aria-expanded="!stageCollapsed"
-          :aria-label="stageCollapsed ? '展开角色舞台' : '收起角色舞台'"
-          @click="stageCollapsed = !stageCollapsed"
-        >
-          {{ stageCollapsed ? '＋' : '－' }}
-        </button>
       </div>
 
       <!-- Live2D 用 visibility 隐藏，避免 display:none 导致人物纹理/部件丢失 -->
       <Live2DStage
         class="stage-pane"
-        :class="{ off: middleMode !== 'companion' || stageCollapsed }"
+        :class="{ off: middleMode !== 'companion' }"
         :speaking="speaking"
         :name="displaySkillName"
       />
@@ -139,6 +140,45 @@ watch(middleMode, (m) => {
         @speaking="(v) => (speaking = v)"
       />
     </section>
+
+    <nav class="mobile-nav" aria-label="主要功能">
+      <button
+        type="button"
+        :class="{ on: mobileView === 'role' }"
+        :aria-current="mobileView === 'role' ? 'page' : undefined"
+        @click="setMobileView('role')"
+      >
+        <Icon name="spark" :size="20" />
+        <span>角色</span>
+      </button>
+      <button
+        type="button"
+        :class="{ on: mobileView === 'companion' }"
+        :aria-current="mobileView === 'companion' ? 'page' : undefined"
+        @click="setMobileView('companion')"
+      >
+        <Icon name="message" :size="20" />
+        <span>陪伴</span>
+      </button>
+      <button
+        type="button"
+        :class="{ on: mobileView === 'agent' }"
+        :aria-current="mobileView === 'agent' ? 'page' : undefined"
+        @click="setMobileView('agent')"
+      >
+        <Icon name="zap" :size="20" />
+        <span>生产力</span>
+      </button>
+      <button
+        type="button"
+        :class="{ on: mobileView === 'emotion' }"
+        :aria-current="mobileView === 'emotion' ? 'page' : undefined"
+        @click="setMobileView('emotion')"
+      >
+        <Icon name="heart" :size="20" />
+        <span>情绪</span>
+      </button>
+    </nav>
   </div>
   <UserGuide :open="guideOpen" @close="closeGuide" />
 </template>
@@ -208,20 +248,6 @@ watch(middleMode, (m) => {
   color: #fff;
   background: var(--surface-2);
 }
-.stage-toggle {
-  display: none;
-  width: var(--touch-min);
-  height: var(--touch-min);
-  border-radius: var(--radius-pill);
-  align-items: center;
-  justify-content: center;
-  color: var(--text-dim);
-  background: rgba(15, 10, 18, 0.68);
-  border: 1px solid var(--border);
-  backdrop-filter: blur(10px);
-  font-size: 20px;
-  line-height: 1;
-}
 .mode-switch {
   display: flex;
   gap: 3px;
@@ -253,6 +279,9 @@ watch(middleMode, (m) => {
   display: flex;
   flex-direction: column;
 }
+.mobile-nav {
+  display: none;
+}
 
 .app.focus-stage {
   grid-template-columns: minmax(210px, 17vw) minmax(0, 1fr);
@@ -278,41 +307,100 @@ watch(middleMode, (m) => {
 }
 @media (max-width: 880px) {
   .app {
+    position: relative;
     grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(180px, 30vh) minmax(0, 1fr);
-    gap: 10px;
-    padding: 10px;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: 0;
+    padding: 0;
     height: 100%;
     min-height: 0;
     overflow: hidden;
   }
   .app.focus-stage {
     grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
   }
-  .app.stage-collapsed {
-    grid-template-rows: auto 64px minmax(0, 1fr);
-  }
+  .col-skill,
+  .col-stage,
   .col-chat {
-    min-height: 0;
+    grid-column: 1;
   }
-  .stage-toolbar {
-    top: 10px;
-    left: 10px;
-  }
-  .guide-btn {
-    width: var(--touch-min);
-    padding: 0;
-  }
-  .guide-btn span {
+  .col-skill {
     display: none;
   }
-  .stage-toggle {
-    display: inline-flex;
+  .col-stage {
+    position: absolute;
+    inset: 0 0 64px;
+    border: 0;
+    border-radius: 0;
+    visibility: hidden;
+    pointer-events: none;
   }
-  .mode-switch button {
-    min-height: var(--touch-min);
-    padding: 0 12px;
+  .col-chat {
+    display: none;
+    grid-row: 1;
+    min-height: 0;
+  }
+  .mobile-companion .col-chat {
+    display: flex;
+  }
+  .app.mobile-role {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  .mobile-role .col-skill {
+    display: block;
+    grid-row: 1;
+  }
+  .mobile-role .col-stage,
+  .mobile-agent .col-stage,
+  .mobile-emotion .col-stage {
+    position: relative;
+    inset: auto;
+    grid-row: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+  .mobile-role .col-stage {
+    grid-row: 2;
+  }
+  .stage-toolbar {
+    display: none;
+  }
+  .mobile-nav {
+    position: relative;
+    z-index: 20;
+    grid-column: 1;
+    grid-row: -2 / -1;
+    min-height: calc(64px + env(safe-area-inset-bottom, 0px));
+    padding: 6px 10px max(6px, env(safe-area-inset-bottom, 0px));
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: start;
+    background: rgba(17, 11, 20, 0.96);
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+  .mobile-nav button {
+    min-width: 0;
+    min-height: 52px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: var(--text-faint);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+  .mobile-nav button.on {
+    color: #f6bfd3;
+    background: var(--accent-soft);
+  }
+  .mobile-nav button:active {
+    transform: scale(0.96);
   }
 }
 </style>

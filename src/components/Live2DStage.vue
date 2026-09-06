@@ -17,9 +17,15 @@ let idleTimer = null
 let loadGuard = null
 let lipRaf = null
 let mouthValue = 0
+const silencedMotionManagers = new WeakSet()
 
-// 通用项：静音动作自带语音（避免和 TTS 抢声道）+ 预加载全部动作
-const COMMON = { volume: 0, motionPreloadStrategy: 'ALL', stageStyle: { height: 500 } }
+// 通用项：音量 0 是桌面兜底；iOS 还会在模型加载后直接禁用动作音频。
+const COMMON = {
+  volume: 0,
+  motionPreloadStrategy: 'ALL',
+  stageStyle: { height: 500 },
+  mobileStageStyle: { width: 280, height: 420 },
+}
 
 // 可切换的形象列表（均为 Cubism 模型，走 oh-my-live2d 自动注入的运行时）。
 // path 为「数组」时表示同一角色的多套装扮，可用「换装」按钮在其间循环。
@@ -30,6 +36,8 @@ const MODELS = [
     path: 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/shizuku/shizuku.model.json',
     scale: 0.2,
     position: [0, 20],
+    mobileScale: 0.16,
+    mobilePosition: [0, 12],
     ...COMMON,
   },
   {
@@ -41,6 +49,8 @@ const MODELS = [
     ],
     scale: 0.18,
     position: [0, 30],
+    mobileScale: 0.15,
+    mobilePosition: [0, 20],
     ...COMMON,
   },
   {
@@ -48,6 +58,8 @@ const MODELS = [
     path: 'https://cdn.jsdelivr.net/npm/live2d-widget-model-koharu/assets/koharu.model.json',
     scale: 0.15,
     position: [0, 30],
+    mobileScale: 0.13,
+    mobilePosition: [0, 18],
     ...COMMON,
   },
   {
@@ -55,6 +67,8 @@ const MODELS = [
     path: 'https://cdn.jsdelivr.net/npm/live2d-widget-model-wanko/assets/wanko.model.json',
     scale: 0.2,
     position: [0, 40],
+    mobileScale: 0.17,
+    mobilePosition: [0, 24],
     ...COMMON,
   },
   {
@@ -62,6 +76,8 @@ const MODELS = [
     path: 'https://cdn.jsdelivr.net/npm/live2d-widget-model-tororo/assets/tororo.model.json',
     scale: 0.15,
     position: [0, 30],
+    mobileScale: 0.13,
+    mobilePosition: [0, 18],
     ...COMMON,
   },
   {
@@ -70,6 +86,8 @@ const MODELS = [
     path: 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json',
     scale: 0.1,
     position: [0, 40],
+    mobileScale: 0.09,
+    mobilePosition: [0, 24],
     ...COMMON,
   },
 ]
@@ -86,6 +104,23 @@ function getModel() {
     return oml2d?.models?.model ?? null
   } catch (_) {
     return null
+  }
+}
+
+// Live2D 动作音与 AI 回复 TTS 是两套音频。iOS Safari 不可靠地支持 audio.volume，
+// 因此直接让模型动作管理器不再返回声音文件，只保留动作和口型。
+function silenceModelMotionAudio() {
+  const manager = getModel()?.internalModel?.motionManager
+  if (!manager || silencedMotionManagers.has(manager)) return
+  silencedMotionManagers.add(manager)
+
+  if (manager.currentAudio) {
+    manager.currentAudio.muted = true
+    manager.currentAudio.pause?.()
+    manager.currentAudio = undefined
+  }
+  if (typeof manager.getSoundFile === 'function') {
+    manager.getSoundFile = () => undefined
   }
 }
 
@@ -186,6 +221,7 @@ async function switchModel() {
   try {
     await oml2d?.loadNextModel?.()
     modelIndex.value = oml2d?.modelIndex ?? modelIndex.value
+    silenceModelMotionAudio()
   } catch (e) {
     console.warn('[live2d] 切换形象失败：', e)
   } finally {
@@ -224,6 +260,7 @@ onMounted(async () => {
       if (s === 'success') {
         status.value = 'ready'
         modelIndex.value = oml2d?.modelIndex ?? 0
+        silenceModelMotionAudio()
         clearTimeout(loadGuard)
         setTimeout(() => playRandomMotion(), 800) // 出场先做个动作打招呼
         scheduleIdle()
@@ -607,9 +644,15 @@ watch(
 }
 
 @media (max-width: 880px) {
+  .stage {
+    min-height: 0;
+    background:
+      radial-gradient(circle at 50% 42%, rgba(191, 121, 164, 0.13), transparent 54%),
+      rgba(13, 8, 16, 0.42);
+  }
   .stage-actions {
-    top: 70px;
-    right: 8px;
+    top: 12px;
+    right: 12px;
   }
   .switch-btn {
     width: var(--touch-min);
@@ -618,7 +661,7 @@ watch(
     gap: 0;
   }
   .nameplate {
-    bottom: 10px;
+    bottom: 18px;
   }
   .poke-hint {
     display: none;
