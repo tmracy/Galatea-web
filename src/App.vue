@@ -4,6 +4,7 @@ import SkillSidebar from './components/SkillSidebar.vue'
 import Live2DStage from './components/Live2DStage.vue'
 import AgentPanel from './components/AgentPanel.vue'
 import EmotionPanel from './components/EmotionPanel.vue'
+import LifePanel from './components/LifePanel.vue'
 import ChatPanel from './components/ChatPanel.vue'
 import LoginGate from './components/LoginGate.vue'
 import UserGuide from './components/UserGuide.vue'
@@ -15,9 +16,9 @@ const GUIDE_KEY = 'galatea_guide_seen'
 
 const speaking = ref(false)
 const activeSkill = ref({ id: 'hh', name: '明日香' })
-const middleMode = ref('companion') // companion | agent | emotion
+const middleMode = ref('companion') // companion | life | agent | emotion
 const guideOpen = ref(false)
-const mobileView = ref('companion') // role | companion | agent | emotion
+const mobileView = ref('companion') // role | companion | life | agent | emotion
 
 const { isLoggedIn, currentSessionId, logout } = useAuth()
 
@@ -47,7 +48,13 @@ function onActivate(skill) {
 function setMobileView(view) {
   mobileView.value = view
   middleMode.value =
-    view === 'agent' ? 'agent' : view === 'emotion' ? 'emotion' : 'companion'
+    view === 'life'
+      ? 'life'
+      : view === 'agent'
+        ? 'agent'
+        : view === 'emotion'
+          ? 'emotion'
+          : 'companion'
   if (view === 'role') {
     nextTick(() => window.dispatchEvent(new Event('resize')))
   }
@@ -55,7 +62,8 @@ function setMobileView(view) {
 
 // Live2D 不能用 display:none，切回陪伴时触发 resize 以免画布尺寸错乱
 watch(middleMode, (m) => {
-  if (m === 'agent') mobileView.value = 'agent'
+  if (m === 'life') mobileView.value = 'life'
+  else if (m === 'agent') mobileView.value = 'agent'
   else if (m === 'emotion') mobileView.value = 'emotion'
   else if (mobileView.value !== 'role') mobileView.value = 'companion'
   if (m === 'companion') {
@@ -91,6 +99,13 @@ watch(middleMode, (m) => {
             @click="middleMode = 'companion'"
           >
             陪伴
+          </button>
+          <button
+            :class="{ on: middleMode === 'life' }"
+            :aria-pressed="middleMode === 'life'"
+            @click="middleMode = 'life'"
+          >
+            生活
           </button>
           <button
             :class="{ on: middleMode === 'agent' }"
@@ -130,6 +145,12 @@ watch(middleMode, (m) => {
         class="stage-pane"
         :session-id="sessionId"
       />
+      <LifePanel
+        v-show="middleMode === 'life'"
+        class="stage-pane"
+        :session-id="sessionId"
+        :active="middleMode === 'life'"
+      />
     </main>
 
     <section v-show="middleMode === 'companion'" class="col-chat">
@@ -159,6 +180,15 @@ watch(middleMode, (m) => {
       >
         <Icon name="message" :size="20" />
         <span>陪伴</span>
+      </button>
+      <button
+        type="button"
+        :class="{ on: mobileView === 'life' }"
+        :aria-current="mobileView === 'life' ? 'page' : undefined"
+        @click="setMobileView('life')"
+      >
+        <Icon name="calendar" :size="20" />
+        <span>生活</span>
       </button>
       <button
         type="button"
@@ -352,6 +382,7 @@ watch(middleMode, (m) => {
     grid-row: 1;
   }
   .mobile-role .col-stage,
+  .mobile-life .col-stage,
   .mobile-agent .col-stage,
   .mobile-emotion .col-stage {
     position: relative;
@@ -374,7 +405,7 @@ watch(middleMode, (m) => {
     min-height: calc(64px + env(safe-area-inset-bottom, 0px));
     padding: 6px 10px max(6px, env(safe-area-inset-bottom, 0px));
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: start;
     background: rgba(17, 11, 20, 0.96);
     border-top: 1px solid var(--border);

@@ -103,6 +103,11 @@ defineProps({
       <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" />
       <path d="M8 9h8M8 13h5" />
     </template>
+    <template v-else-if="name === 'calendar'">
+      <rect x="3" y="5" width="18" height="16" rx="3" />
+      <path d="M16 3v4M8 3v4M3 10h18" />
+      <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" />
+    </template>
   </svg>
 </template>
 

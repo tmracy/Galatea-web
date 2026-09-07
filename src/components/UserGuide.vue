@@ -15,7 +15,8 @@ const CHAPTERS = [
   { id: 'voice', no: '05', title: '音色与人设', nav: '音色' },
   { id: 'agent', no: '06', title: '生产力', nav: '生产力' },
   { id: 'emotion', no: '07', title: '情绪', nav: '情绪' },
-  { id: 'faq', no: '08', title: '建议与问答', nav: '问答' },
+  { id: 'life', no: '08', title: '生活', nav: '生活' },
+  { id: 'faq', no: '09', title: '建议与问答', nav: '问答' },
 ]
 
 const active = ref(0)
@@ -154,7 +155,7 @@ onBeforeUnmount(() => {
                 <h4>页面怎么看</h4>
                 <ul class="layout">
                   <li><strong>左边</strong>：人设（角色）和退出</li>
-                  <li><strong>中间</strong>：三种模式——陪伴 / 生产力 / 情绪</li>
+                  <li><strong>中间</strong>：四种模式——陪伴 / 生活 / 生产力 / 情绪</li>
                   <li><strong>右边</strong>：对话框（打字、语音、新对话、音色）</li>
                 </ul>
                 <p>日常聊天用「陪伴」+ 右侧对话框即可。中间会显示角色形象，她说话时嘴型会跟着动。</p>
@@ -232,6 +233,19 @@ onBeforeUnmount(() => {
                 <p class="intro">专门用来聊心情。也可以点页面上的快捷句子。</p>
                 <p>这条通道和日常陪伴是分开的，不会把情绪倾诉写进长期记忆。</p>
                 <p>姓名、住址、爱好等请在「陪伴」里说，并在结束后点 <strong>🆕</strong> 归档。</p>
+              </template>
+
+              <template v-else-if="chapter.id === 'life'">
+                <h3>她的生活</h3>
+                <p class="intro">不聊天的时候，她也按自己的作息过一天。这里能看到今天发生的事，以及此刻的心情。</p>
+                <p>中间切到 <strong>生活</strong>：</p>
+                <ul>
+                  <li>上方是愉快、精力、压力、想交流四项状态</li>
+                  <li>下方是今天已经发生的生活片段</li>
+                  <li>点「记录此刻」，按当前时间段生成一次事件；同一时段不会重复生成</li>
+                  <li>夜里休息时段无法生成，会显示她正在休息</li>
+                </ul>
+                <p class="whisper">生成可能需要几秒到十几秒，属正常现象。</p>
               </template>
 
               <template v-else-if="chapter.id === 'faq'">

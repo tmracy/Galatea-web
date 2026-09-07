@@ -1,4 +1,10 @@
-import { mockChat, mockListSkills, mockUploadSkill } from './mock.js'
+import {
+  mockChat,
+  mockListSkills,
+  mockUploadSkill,
+  mockLife,
+  mockGenerateLife,
+} from './mock.js'
 
 const BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')
 const FORCE_MOCK = import.meta.env.VITE_USE_MOCK === '1'
@@ -310,6 +316,35 @@ export async function clearEmotionChat({ sessionId }) {
   const data = await postJSON('/emotion/clear', { session_id: sessionId })
   if (data?.code !== 0) throw new Error(data?.info || '清空失败')
   return data
+}
+
+function unwrapLife(data, fallback) {
+  if (data?.code === 0) return data
+  throw new Error(data?.info || fallback)
+}
+
+/** 查询角色当天生活事件、当前情绪与后续上下文。GET /api/life?session_id= */
+export async function getLife({ sessionId }) {
+  if (useMock()) return mockLife()
+  if (!sessionId) throw new Error('缺少 session_id')
+  const res = await fetch(url(`/api/life?session_id=${encodeURIComponent(sessionId)}`))
+  const data = await res.json().catch(() => null)
+  if (!data) throw new Error(`HTTP ${res.status}`)
+  return unwrapLife(data, '查询失败')
+}
+
+/** 按当前北京时间槽生成一次角色生活事件。POST /api/life/generate */
+export async function generateLife({ sessionId }) {
+  if (useMock()) return mockGenerateLife()
+  if (!sessionId) throw new Error('缺少 session_id')
+  const res = await fetch(url('/api/life/generate'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId }),
+  })
+  const data = await res.json().catch(() => null)
+  if (!data) throw new Error(`HTTP ${res.status}`)
+  return unwrapLife(data, '生成失败')
 }
 
 /** 下载 agent 工作区里的文件 */

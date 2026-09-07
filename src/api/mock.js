@@ -35,3 +35,62 @@ export function mockListSkills() {
 export function mockUploadSkill(skill) {
   return new Promise((resolve) => setTimeout(() => resolve({ ...skill, mock: true }), 300))
 }
+
+function mockLifeEvent() {
+  const date = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+  return {
+    date,
+    slot_id: 'workday_afternoon_work',
+    start: '13:31',
+    end: '18:00',
+    location: 'company',
+    activity: '承接上午事项并完成下午工作',
+    event_title: '把棘手的报表理顺了',
+    objective_process: '下午集中核对了几组数据，并把遗漏的项目逐一补齐。',
+    objective_result: '报表按时完成，晚上的安排没有受到影响。',
+    ai_interpretation: '虽然中间有一点烦躁，但真正完成之后还是很有成就感。',
+    emotion_reason: '任务顺利收尾，压力有所下降。',
+    valence_delta: 7,
+    energy_delta: -5,
+    stress_delta: -8,
+    social_need_delta: 3,
+    unresolved_threads: [],
+    share_desire: 7,
+    memory_worthiness: 'medium',
+    next_event_context: '工作已经收尾，准备下班回家。',
+    current_emotion: { valence: 72, energy: 58, stress: 24, social_need: 51 },
+  }
+}
+
+export function mockLife() {
+  return Promise.resolve({
+    code: 0,
+    status: 'ok',
+    current_emotion: { valence: 65, energy: 70, stress: 30, social_need: 45 },
+    next_event_context: '',
+    events: [],
+  })
+}
+
+export function mockGenerateLife() {
+  const event = mockLifeEvent()
+  return new Promise((resolve) =>
+    setTimeout(
+      () =>
+        resolve({
+          code: 0,
+          status: 'ok',
+          event,
+          current_emotion: event.current_emotion,
+          next_event_context: event.next_event_context,
+          events: [event],
+        }),
+      700,
+    ),
+  )
+}
