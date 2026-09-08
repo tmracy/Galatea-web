@@ -77,6 +77,7 @@ watch(
   () => props.skillName,
   (name) => {
     if (hasRealConversation()) return
+    if (String(props.inboxReply || '').trim()) return
     const first = messages.value[0]
     if (messages.value.length === 1 && first?.role === 'assistant') {
       first.content = makeGreeting(name)
@@ -90,7 +91,12 @@ watch(
     const reply = String(text || '').trim()
     if (!reply) return
     if (messages.value.some((item) => item.role === 'assistant' && item.content === reply)) return
-    messages.value.push({ role: 'assistant', content: reply })
+    const first = messages.value[0]
+    if (messages.value.length === 1 && first?.role === 'assistant') {
+      first.content = reply
+    } else {
+      messages.value.push({ role: 'assistant', content: reply })
+    }
     scrollToBottom()
   },
 )
