@@ -347,6 +347,29 @@ export async function generateLife({ sessionId }) {
   return unwrapLife(data, '生成失败')
 }
 
+/** 按 slot_id 保存当天生活留言。POST /api/life/comment */
+export async function commentLife({ sessionId, slotId, comment }) {
+  if (useMock()) return { code: 0, comments: { [slotId]: comment } }
+  if (!sessionId) throw new Error('缺少 session_id')
+  const data = await postJSON('/api/life/comment', {
+    session_id: sessionId,
+    slot_id: slotId,
+    comment,
+  })
+  return unwrapLife(data, '留言失败')
+}
+
+/** 打开网页或登录时拉取日结留言回复。GET /api/life/reply */
+export async function getLifeReply({ sessionId }) {
+  if (useMock()) return { code: 0, reply: '' }
+  if (!sessionId) throw new Error('缺少 session_id')
+  const res = await fetch(url(`/api/life/reply?session_id=${encodeURIComponent(sessionId)}`))
+  const data = await res.json().catch(() => null)
+  if (!data) throw new Error(`HTTP ${res.status}`)
+  if (data?.code !== 0) throw new Error(data?.info || '回复失败')
+  return data
+}
+
 /** 下载 agent 工作区里的文件 */
 export function downloadAgentFile({ sessionId, taskName, filename }) {
   const q = new URLSearchParams({

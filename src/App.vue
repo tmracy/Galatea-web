@@ -10,6 +10,7 @@ import LoginGate from './components/LoginGate.vue'
 import UserGuide from './components/UserGuide.vue'
 import Icon from './components/Icon.vue'
 import { useAuth } from './composables/useAuth.js'
+import { getLifeReply } from './api/index.js'
 import { skillDisplayName } from './utils/skillName.js'
 
 const GUIDE_KEY = 'galatea_guide_seen'
@@ -21,10 +22,28 @@ const guideOpen = ref(false)
 const mobileView = ref('companion') // role | companion | life | agent | emotion
 
 const { isLoggedIn, currentSessionId, logout } = useAuth()
+const inboxReply = ref('')
 
 watch(isLoggedIn, (on) => {
   if (on && !localStorage.getItem(GUIDE_KEY)) guideOpen.value = true
 }, { immediate: true })
+
+watch(
+  () => [isLoggedIn.value, currentSessionId.value],
+  async ([on, id]) => {
+    if (!on || !id) {
+      inboxReply.value = ''
+      return
+    }
+    try {
+      const data = await getLifeReply({ sessionId: id })
+      inboxReply.value = data?.reply || ''
+    } catch (_) {
+      inboxReply.value = ''
+    }
+  },
+  { immediate: true },
+)
 
 function openGuide() {
   guideOpen.value = true
@@ -158,6 +177,7 @@ watch(middleMode, (m) => {
         :session-id="sessionId"
         :skill-name="displaySkillName"
         :active="middleMode === 'companion'"
+        :inbox-reply="inboxReply"
         @speaking="(v) => (speaking = v)"
       />
     </section>

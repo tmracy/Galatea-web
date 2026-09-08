@@ -10,6 +10,7 @@ const props = defineProps({
   sessionId: { type: String, default: 'web' },
   skillName: { type: String, default: '明日香' },
   active: { type: Boolean, default: true },
+  inboxReply: { type: String, default: '' },
 })
 const emit = defineEmits(['speaking'])
 
@@ -80,6 +81,17 @@ watch(
     if (messages.value.length === 1 && first?.role === 'assistant') {
       first.content = makeGreeting(name)
     }
+  },
+)
+
+watch(
+  () => props.inboxReply,
+  (text) => {
+    const reply = String(text || '').trim()
+    if (!reply) return
+    if (messages.value.some((item) => item.role === 'assistant' && item.content === reply)) return
+    messages.value.push({ role: 'assistant', content: reply })
+    scrollToBottom()
   },
 )
 

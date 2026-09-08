@@ -1,6 +1,6 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { generateLife, getLife } from '../api/index.js'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { commentLife, getLife } from '../api/index.js'
 import Icon from './Icon.vue'
 
 const props = defineProps({
@@ -9,14 +9,19 @@ const props = defineProps({
 })
 
 const loading = ref(false)
-const generating = ref(false)
 const error = ref('')
 const notice = ref('')
 const status = ref('')
 const currentEmotion = ref({})
 const nextEventContext = ref('')
 const events = ref([])
+const currentSlotId = ref('')
+const commentsMap = ref({})
+const commentDrafts = ref({})
+const showHistory = ref(false)
+const savingSlot = ref('')
 let requestToken = 0
+let pollTimer = 0
 
 const EMOTIONS = [
   { key: 'valence', label: '愉快', className: 'rose' },
@@ -61,20 +66,34 @@ const todayEvents = computed(() =>
     .sort((a, b) => String(a.start || '').localeCompare(String(b.start || ''))),
 )
 
-const generateLabel = computed(() => {
-  if (generating.value) return '故事生成中…'
-  if (status.value === 'already_generated') return '本时段已记录'
-  if (status.value === 'sleep time') return '她正在休息'
-  return '记录此刻'
+const currentEvent = computed(() => {
+  const slot = currentSlotId.value
+  const today = chinaDate()
+  if (slot) {
+    return (
+      events.value.find((event) => event?.date === today && event?.slot_id === slot) ||
+      events.value.find((event) => event?.slot_id === slot) ||
+      null
+    )
+  }
+  const todayList = todayEvents.value
+  return todayList[todayList.length - 1] || null
 })
 
-const canGenerate = computed(
-  () =>
-    !loading.value &&
-    !generating.value &&
-    status.value !== 'sleep time' &&
-    status.value !== 'already_generated',
-)
+const historyEvents = computed(() => {
+  const current = currentEvent.value
+  return events.value
+    .filter((event) => {
+      if (!current) return true
+      return !(event?.date === current.date && event?.slot_id === current.slot_id)
+    })
+    .slice()
+    .sort((a, b) => {
+      const dateCmp = String(b.date || '').localeCompare(String(a.date || ''))
+      if (dateCmp) return dateCmp
+      return String(b.start || '').localeCompare(String(a.start || ''))
+    })
+})
 
 function emotionValue(key) {
   const value = Number(currentEmotion.value?.[key])
@@ -109,6 +128,11 @@ function applyPayload(data) {
     list.push(generated)
   }
   events.value = list
+  currentSlotId.value = data?.current_slot_id || generated?.slot_id || ''
+  commentsMap.value = data?.comments && typeof data.comments === 'object' ? data.comments : {}
+  Object.entries(commentsMap.value).forEach(([slotId, text]) => {
+    if (commentDrafts.value[slotId] == null) commentDrafts.value[slotId] = text
+  })
 }
 
 async function refresh({ silent = false } = {}) {
@@ -126,35 +150,43 @@ async function refresh({ silent = false } = {}) {
   }
 }
 
-async function generate() {
-  if (!canGenerate.value) return
-  generating.value = true
+async function saveComment(event) {
+  const slotId = event?.slot_id
+  if (!slotId || !props.sessionId || savingSlot.value) return
+  savingSlot.value = slotId
   error.value = ''
-  notice.value = ''
   try {
-    const data = await generateLife({ sessionId: props.sessionId })
+    const data = await commentLife({
+      sessionId: props.sessionId,
+      slotId,
+      comment: (commentDrafts.value[slotId] || '').trim(),
+    })
     applyPayload(data)
-    if (data?.status === 'already_generated') {
-      notice.value = '这个时段的故事已经记录过了。'
-    } else if (data?.status === 'sleep time') {
-      notice.value = '夜深了，她已经休息。'
-    } else {
-      notice.value = '她刚刚经历的事，已经写进今天。'
-    }
+    notice.value = '留言已记下，她看到后会决定要不要回你。'
   } catch (err) {
-    error.value = `生活事件生成失败：${err.message}`
+    error.value = `留言失败：${err.message}`
   } finally {
-    generating.value = false
+    savingSlot.value = ''
   }
+}
+
+function commentOf(event) {
+  return commentsMap.value?.[event?.slot_id] || ''
 }
 
 watch(
   () => [props.active, props.sessionId],
   ([active, sessionId]) => {
-    if (active && sessionId) refresh()
+    clearInterval(pollTimer)
+    if (active && sessionId) {
+      refresh()
+      pollTimer = window.setInterval(() => refresh({ silent: true }), 120000)
+    }
   },
   { immediate: true },
 )
+
+onBeforeUnmount(() => clearInterval(pollTimer))
 </script>
 
 <template>
@@ -178,16 +210,22 @@ watch(
           <button
             type="button"
             class="refresh"
-            :disabled="loading || generating"
+            :disabled="loading"
             aria-label="刷新生活动态"
             title="刷新"
             @click="refresh()"
           >
             <Icon name="refresh" :size="16" />
           </button>
-          <button type="button" class="generate" :disabled="!canGenerate" @click="generate">
-            <Icon :name="generating ? 'loader' : 'spark'" :size="16" />
-            {{ generateLabel }}
+          <button
+            type="button"
+            class="history-btn"
+            :class="{ on: showHistory }"
+            :title="showHistory ? '收起历史' : '历史事件'"
+            @click="showHistory = !showHistory"
+          >
+            <Icon name="calendar" :size="16" />
+            {{ showHistory ? '收起历史' : '历史事件' }}
           </button>
         </div>
       </header>
@@ -232,37 +270,95 @@ watch(
         </div>
       </section>
 
-      <section class="timeline" aria-labelledby="life-timeline-title">
+      <section class="now-card" aria-labelledby="life-now-title">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">当前时段</p>
+            <h3 id="life-now-title">她现在在经历的事</h3>
+          </div>
+        </div>
+
+        <div v-if="loading && !currentEvent" class="loading" role="status">
+          <span></span><span></span><span></span>
+          正在翻开她此刻的故事…
+        </div>
+
+        <div v-else-if="!currentEvent" class="empty">
+          <span class="empty-icon"><Icon name="calendar" :size="25" /></span>
+          <strong>{{ status === 'sleep time' ? '她已经安静地休息了' : '这一段还没有写下来' }}</strong>
+          <p>
+            {{ status === 'sleep time' ? '等她醒来，再看看新一天会发生什么。' : '到点后会自动记下，稍后再来看。' }}
+          </p>
+        </div>
+
+        <article v-else class="event-card current">
+          <div class="event-meta">
+            <span>{{ currentEvent.start || '—' }} - {{ currentEvent.end || '' }}</span>
+            <span v-if="currentEvent.location">{{ locationLabel(currentEvent.location) }}</span>
+            <span v-if="currentEvent.activity">{{ currentEvent.activity }}</span>
+          </div>
+          <h4>{{ currentEvent.event_title || currentEvent.activity || '生活片段' }}</h4>
+          <p v-if="currentEvent.objective_process" class="process">{{ currentEvent.objective_process }}</p>
+          <p v-if="currentEvent.objective_result" class="result">{{ currentEvent.objective_result }}</p>
+          <p v-if="currentEvent.ai_interpretation" class="interpretation">
+            {{ currentEvent.ai_interpretation }}
+          </p>
+          <p v-if="currentEvent.emotion_reason" class="reason">{{ currentEvent.emotion_reason }}</p>
+          <div v-if="eventDeltas(currentEvent).length" class="deltas" aria-label="情绪变化">
+            <span
+              v-for="delta in eventDeltas(currentEvent)"
+              :key="delta.key"
+              :class="{ up: delta.value > 0, down: delta.value < 0 }"
+            >
+              {{ delta.label }} {{ delta.value > 0 ? '+' : '' }}{{ delta.value }}
+            </span>
+          </div>
+          <div class="comment-box">
+            <small>给这件事留一句话</small>
+            <textarea
+              v-model="commentDrafts[currentEvent.slot_id]"
+              rows="2"
+              maxlength="200"
+              placeholder="她不一定每条都回，但会看见。"
+            ></textarea>
+            <div class="comment-row">
+              <span v-if="commentOf(currentEvent)" class="saved">已留言</span>
+              <button
+                type="button"
+                :disabled="savingSlot === currentEvent.slot_id"
+                @click="saveComment(currentEvent)"
+              >
+                {{ savingSlot === currentEvent.slot_id ? '保存中…' : '留下这句话' }}
+              </button>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section v-show="showHistory" class="timeline" aria-labelledby="life-timeline-title">
         <div class="section-head timeline-head">
           <div>
-            <p class="section-kicker">今日轨迹</p>
-            <h3 id="life-timeline-title">今天发生的事</h3>
+            <p class="section-kicker">历史轨迹</p>
+            <h3 id="life-timeline-title">之前发生的事</h3>
           </div>
-          <span class="count">{{ todayEvents.length }} 段故事</span>
+          <span class="count">{{ historyEvents.length }} 段故事</span>
         </div>
 
-        <div v-if="loading" class="loading" role="status">
-          <span></span><span></span><span></span>
-          正在翻开她今天的故事…
-        </div>
-
-        <div v-else-if="!todayEvents.length" class="empty">
+        <div v-if="!historyEvents.length" class="empty">
           <span class="empty-icon"><Icon name="calendar" :size="25" /></span>
-          <strong>{{ status === 'sleep time' ? '她已经安静地休息了' : '今天的故事还没有开始' }}</strong>
-          <p>
-            {{ status === 'sleep time' ? '等她醒来，再看看新一天会发生什么。' : '点击“记录此刻”，生成当前时间段的生活事件。' }}
-          </p>
+          <strong>还没有更早的故事</strong>
+          <p>当前这一段之外，暂时没有其他记录。</p>
         </div>
 
         <ol v-else class="event-list">
           <li
-            v-for="(event, index) in todayEvents"
-            :key="`${event.date || 'today'}-${event.slot_id || index}`"
+            v-for="(event, index) in historyEvents"
+            :key="`${event.date || 'day'}-${event.slot_id || index}`"
             class="event-item"
           >
             <div class="time">
               <strong>{{ event.start || '—' }}</strong>
-              <span>{{ event.end || '' }}</span>
+              <span>{{ event.date || '' }}</span>
             </div>
             <span class="timeline-dot" aria-hidden="true"></span>
             <article class="event-card">
@@ -276,19 +372,24 @@ watch(
               <p v-if="event.ai_interpretation" class="interpretation">
                 {{ event.ai_interpretation }}
               </p>
-              <p v-if="event.emotion_reason" class="reason">{{ event.emotion_reason }}</p>
-              <div v-if="eventDeltas(event).length" class="deltas" aria-label="情绪变化">
-                <span
-                  v-for="delta in eventDeltas(event)"
-                  :key="delta.key"
-                  :class="{ up: delta.value > 0, down: delta.value < 0 }"
-                >
-                  {{ delta.label }} {{ delta.value > 0 ? '+' : '' }}{{ delta.value }}
-                </span>
-              </div>
-              <div v-if="event.unresolved_threads?.length" class="threads">
-                <small>接下来还要</small>
-                <span v-for="thread in event.unresolved_threads" :key="thread">{{ thread }}</span>
+              <div class="comment-box">
+                <small>给这件事留一句话</small>
+                <textarea
+                  v-model="commentDrafts[event.slot_id]"
+                  rows="2"
+                  maxlength="200"
+                  placeholder="想说的话写在这里。"
+                ></textarea>
+                <div class="comment-row">
+                  <span v-if="commentOf(event)" class="saved">已留言</span>
+                  <button
+                    type="button"
+                    :disabled="savingSlot === event.slot_id"
+                    @click="saveComment(event)"
+                  >
+                    {{ savingSlot === event.slot_id ? '保存中…' : '留下这句话' }}
+                  </button>
+                </div>
               </div>
             </article>
           </li>
@@ -392,6 +493,7 @@ watch(
   gap: 8px;
 }
 .refresh,
+.history-btn,
 .generate {
   min-height: var(--touch-min);
   border-radius: var(--radius-pill);
@@ -405,6 +507,7 @@ watch(
   background: var(--surface-1);
   border: 1px solid var(--border);
 }
+.history-btn,
 .generate {
   gap: 7px;
   padding: 0 17px;
@@ -413,6 +516,12 @@ watch(
   font-size: 13px;
   font-weight: 700;
   box-shadow: 0 10px 24px rgba(177, 76, 117, 0.2);
+}
+.history-btn.on,
+.generate.on {
+  color: var(--text);
+  background: var(--surface-2);
+  box-shadow: none;
 }
 .refresh:hover:not(:disabled) {
   color: var(--text);
@@ -441,13 +550,64 @@ watch(
   border-color: var(--border-strong);
 }
 .state-card,
+.now-card,
 .timeline {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: rgba(23, 15, 28, 0.7);
 }
-.state-card {
+.state-card,
+.now-card {
   padding: 22px;
+}
+.now-card {
+  margin-top: 14px;
+}
+.generate.on {
+  color: var(--text);
+  background: var(--surface-2);
+  box-shadow: none;
+}
+.comment-box {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+.comment-box small {
+  color: var(--text-faint);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.comment-box textarea {
+  width: 100%;
+  resize: none;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.comment-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.comment-row .saved {
+  margin-right: auto;
+  color: var(--accent);
+  font-size: 11px;
+}
+.comment-row button {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  color: #fff;
+  background: var(--accent-grad);
+  font-size: 12px;
+  font-weight: 650;
 }
 .section-head {
   justify-content: space-between;
@@ -758,6 +918,7 @@ watch(
     gap: 0;
   }
   .state-card,
+  .now-card,
   .timeline {
     padding: 17px 15px;
     border-radius: var(--radius);
