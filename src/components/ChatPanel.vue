@@ -99,6 +99,7 @@ watch(
     }
     scrollToBottom()
   },
+  { immediate: true },
 )
 
 watch(
