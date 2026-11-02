@@ -4,7 +4,13 @@ import {
   mockUploadSkill,
   mockLife,
   mockGenerateLife,
+  mockSelectSkill,
+  mockMemory,
+  mockPlaza,
+  mockCreateCharacter,
 } from './mock.js'
+
+export const DEFAULT_CHARACTER_ID = 'hh'
 
 const BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')
 const FORCE_MOCK = import.meta.env.VITE_USE_MOCK === '1'
@@ -32,8 +38,19 @@ async function postJSON(path, body) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json()
+  const data = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(data?.info || `HTTP ${res.status}`)
+  return data
+}
+
+function unwrapOk(data, fallback) {
+  if (data?.code === 0) return data
+  throw new Error(data?.info || fallback)
+}
+
+function withCharacterId(characterId) {
+  const id = String(characterId || DEFAULT_CHARACTER_ID).trim()
+  return id || DEFAULT_CHARACTER_ID
 }
 
 /** 解析 Flask 统一响应：{ code: 0, reply } 成功；{ code: 1, info } 失败 */
@@ -46,15 +63,16 @@ function unwrapFlask(data, valueKey = 'reply') {
 
 /**
  * 发送一条用户消息，返回 { reply, audioUrl }。
- * 对齐 Galatea entry/server.py：POST /api/chat，body { query, id }。
- * @param {{ text: string, sessionId: string }} payload
+ * 对齐 Galatea entry/server.py：POST /api/chat，body { query, id, character_id }。
+ * @param {{ text: string, sessionId: string, characterId?: string }} payload
  */
-export async function sendChat({ text, sessionId }) {
+export async function sendChat({ text, sessionId, characterId }) {
   if (useMock() || chatBackendDown) return mockChat(text)
   try {
     const data = await postJSON('/api/chat', {
       query: text,
       id: sessionId,
+      character_id: withCharacterId(characterId),
     })
     chatBackendDown = false // 后端可用，解除可能的回退状态
     return unwrapFlask(data, 'reply')
@@ -67,11 +85,11 @@ export async function sendChat({ text, sessionId }) {
 
 /**
  * 流式发送一条用户消息（SSE）。后端逐句推送，onSentence 每句回调一次。
- * 对齐 entry/server.py：POST /api/chat/stream，body { query, id }，事件 data:{sentence|done|error}。
+ * 对齐 entry/server.py：POST /api/chat/stream，body { query, id, character_id }。
  * 返回 { reply }（完整文本）。后端不可用时回退 mock。
- * @param {{ text: string, sessionId: string, onSentence?: (s: string) => any }} payload
+ * @param {{ text: string, sessionId: string, characterId?: string, onSentence?: (s: string) => any }} payload
  */
-export async function sendChatStream({ text, sessionId, onSentence }) {
+export async function sendChatStream({ text, sessionId, characterId, onSentence }) {
   if (useMock() || chatBackendDown) {
     const r = await mockChat(text)
     if (r.reply && onSentence) await onSentence(r.reply)
@@ -82,7 +100,11 @@ export async function sendChatStream({ text, sessionId, onSentence }) {
     const res = await fetch(url('/api/chat/stream'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: text, id: sessionId }),
+      body: JSON.stringify({
+        query: text,
+        id: sessionId,
+        character_id: withCharacterId(characterId),
+      }),
     })
     if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
     chatBackendDown = false // 后端有响应，解除可能的回退状态
@@ -209,15 +231,16 @@ export async function cloneVoice(file, sessionId) {
 
 /**
  * 归档当前对话窗口（开新对话/退出时调用）。
- * 对齐 entry/server.py：POST /api/upload，body { session_id, chat_history }。
+ * 对齐 entry/server.py：POST /api/upload，body { session_id, character_id, chat_history }。
  * 后端先落盘、清空短期记忆并返回 greeting；长期记忆在后台提炼。
- * @param {{ sessionId: string, chatHistory: Array<{role:string,content:string}> }} payload
+ * @param {{ sessionId: string, characterId?: string, chatHistory: Array<{role:string,content:string}> }} payload
  * @returns {Promise<{ code: number, archived?: boolean, greeting?: string }>}
  */
-export async function uploadChatHistory({ sessionId, chatHistory }) {
+export async function uploadChatHistory({ sessionId, characterId, chatHistory }) {
   if (useMock()) return { code: 0, info: 'mock 已归档', archived: true, greeting: '' }
   const data = await postJSON('/api/upload', {
     session_id: sessionId,
+    character_id: withCharacterId(characterId),
     chat_history: chatHistory,
   })
   if (data?.code !== 0) throw new Error(data?.info || '归档失败')
@@ -236,6 +259,106 @@ export async function listSkills(sessionId) {
   const data = await res.json()
   if (data?.code === 1) throw new Error(data.info || '获取人设失败')
   return Array.isArray(data) ? data : data?.skills || []
+}
+
+/**
+ * 切换内置人设。对齐 POST /api/skills/select，body { session_id, skill_id }。
+ * skill_id 为 hh（明日香）或 lose_weight（沈砚）。后端会覆盖当前 skill 并清空对话与生活。
+ */
+export async function selectSkill({ sessionId, skillId }) {
+  if (useMock()) return mockSelectSkill({ sessionId, skillId })
+  if (!sessionId) throw new Error('缺少 session_id')
+  if (!skillId) throw new Error('缺少 skill_id')
+  const data = await postJSON('/api/skills/select', {
+    session_id: sessionId,
+    skill_id: skillId,
+  })
+  return unwrapOk(data, '切换人设失败')
+}
+
+/**
+ * 读取当前角色的实体记忆与社区记忆。GET /api/memory?session_id=&character_id=
+ */
+export async function getMemory({ sessionId, characterId }) {
+  if (useMock()) return mockMemory({ sessionId, characterId })
+  if (!sessionId) throw new Error('缺少 session_id')
+  const id = withCharacterId(characterId)
+  const res = await fetch(
+    url(`/api/memory?session_id=${encodeURIComponent(sessionId)}&character_id=${encodeURIComponent(id)}`),
+  )
+  const data = await res.json().catch(() => null)
+  if (!data) throw new Error(`HTTP ${res.status}`)
+  return unwrapOk(data, '读取记忆失败')
+}
+
+/**
+ * 用名字、开场白、人设等生成一份 skill.md。POST /api/character
+ * 成功时返回 { [session_id]: markdown }，没有 code 包装。
+ */
+export async function createCharacter({ sessionId, name, kaichangbai, character, talk, introduction }) {
+  if (useMock()) return mockCreateCharacter({ sessionId, name, kaichangbai, character, talk, introduction })
+  if (!sessionId) throw new Error('缺少 session_id')
+  const data = await postJSON('/api/character', {
+    session_id: sessionId,
+    name,
+    kaichangbai,
+    character,
+    talk,
+    introduction,
+  })
+  if (data?.code === 1) throw new Error(data.info || '生成人设失败')
+  const skill = typeof data?.[sessionId] === 'string' ? data[sessionId] : ''
+  if (!skill.trim()) throw new Error('未生成人设')
+  return { skill }
+}
+
+export async function listMyCharacters(sessionId) {
+  if (useMock()) return mockPlaza('mine')
+  if (!sessionId) throw new Error('缺少 session_id')
+  const res = await fetch(url(`/api/character/mine?session_id=${encodeURIComponent(sessionId)}`))
+  const data = await res.json().catch(() => null)
+  if (!data) throw new Error(`HTTP ${res.status}`)
+  const ok = unwrapOk(data, '读取我的人设失败')
+  return Array.isArray(ok.personas) ? ok.personas : []
+}
+
+export async function listPlaza(sessionId) {
+  if (useMock()) return mockPlaza('public')
+  if (!sessionId) throw new Error('缺少 session_id')
+  const res = await fetch(url(`/api/character/public?session_id=${encodeURIComponent(sessionId)}`))
+  const data = await res.json().catch(() => null)
+  if (!data) throw new Error(`HTTP ${res.status}`)
+  const ok = unwrapOk(data, '读取人设广场失败')
+  return Array.isArray(ok.personas) ? ok.personas : []
+}
+
+export async function publishCharacter(payload) {
+  if (useMock()) {
+    return { code: 0, id: payload.id || 'mock-persona', public: payload.public !== false }
+  }
+  const data = await postJSON('/api/character/public', {
+    session_id: payload.sessionId,
+    name: payload.name || '',
+    introduction: payload.introduction || '',
+    kaichangbai: payload.kaichangbai || '',
+    skill: payload.skill || '',
+    avatar: payload.avatar || '',
+    public: payload.public !== false,
+    id: payload.id || '',
+  })
+  return unwrapOk(data, '发布人设失败')
+}
+
+export async function deleteCharacter({ sessionId, id }) {
+  if (useMock()) return { code: 0, id }
+  const data = await postJSON('/api/character/delete', { session_id: sessionId, id })
+  return unwrapOk(data, '删除人设失败')
+}
+
+export async function starCharacter({ sessionId, id }) {
+  if (useMock()) return { code: 0, id, stars: 1, starred: true }
+  const data = await postJSON('/api/character/star', { session_id: sessionId, id })
+  return unwrapOk(data, '点赞失败')
 }
 
 /**

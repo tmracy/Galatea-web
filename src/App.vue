@@ -16,7 +16,9 @@ import { skillDisplayName } from './utils/skillName.js'
 const GUIDE_KEY = 'galatea_guide_seen'
 
 const speaking = ref(false)
-const activeSkill = ref({ id: 'hh', name: '明日香' })
+const activeSkill = ref({ id: 'hh', name: '明日香', characterId: 'hh' })
+const characterId = ref('hh')
+const personaNonce = ref(0)
 const middleMode = ref('companion') // companion | life | agent | emotion
 const guideOpen = ref(false)
 const mobileView = ref('companion') // role | companion | life | agent | emotion
@@ -60,8 +62,11 @@ const displaySkillName = computed(() => skillDisplayName(activeSkill.value))
 const sessionId = computed(() => currentSessionId.value)
 
 function onActivate(skill) {
+  const nextId = skill?.characterId || (skill?.id === 'lose_weight' ? 'lose_weight' : 'hh')
+  const same = nextId === characterId.value && skill?.id === activeSkill.value?.id
   activeSkill.value = skill
-  // 不再用 skill.id 覆盖用户 session_id
+  characterId.value = nextId
+  if (!same) personaNonce.value += 1
 }
 
 function setMobileView(view) {
@@ -104,6 +109,7 @@ watch(middleMode, (m) => {
     <SkillSidebar
       class="col-skill"
       :session-id="sessionId"
+      :character-id="characterId"
       @activate="onActivate"
       @logout="logout"
       @guide="openGuide"
@@ -165,6 +171,7 @@ watch(middleMode, (m) => {
         :session-id="sessionId"
       />
       <LifePanel
+        :key="personaNonce"
         v-show="middleMode === 'life'"
         class="stage-pane"
         :session-id="sessionId"
@@ -174,8 +181,11 @@ watch(middleMode, (m) => {
 
     <section v-show="middleMode === 'companion'" class="col-chat">
       <ChatPanel
+        :key="personaNonce"
         :session-id="sessionId"
+        :character-id="characterId"
         :skill-name="displaySkillName"
+        :greeting="activeSkill.kaichangbai || ''"
         :active="middleMode === 'companion'"
         :inbox-reply="inboxReply"
         @speaking="(v) => (speaking = v)"

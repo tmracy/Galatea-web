@@ -5,6 +5,11 @@ const KNOWN = {
   asuka: '明日香',
   mingrixiang: '明日香',
   'mingrixiang-companion': '明日香',
+  default: '明日香',
+  lose_weight: '沈砚',
+  'lose-weight': '沈砚',
+  shenyan: '沈砚',
+  'shenyan-weightloss-coach': '沈砚',
 }
 
 function keyOf(raw) {

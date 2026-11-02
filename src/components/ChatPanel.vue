@@ -8,17 +8,21 @@ import { useVoiceInput, useVoiceOutput } from '../composables/useVoice.js'
 
 const props = defineProps({
   sessionId: { type: String, default: 'web' },
+  characterId: { type: String, default: 'hh' },
   skillName: { type: String, default: '明日香' },
+  greeting: { type: String, default: '' },
   active: { type: Boolean, default: true },
   inboxReply: { type: String, default: '' },
 })
 const emit = defineEmits(['speaking'])
 
-function makeGreeting(name) {
+function makeGreeting(name, greeting) {
+  const custom = String(greeting || '').trim()
+  if (custom) return custom
   return `嗨，我是${name || '明日香'}。想聊点什么呀？打字或者点麦克风跟我说话都行。`
 }
 
-const messages = ref([{ role: 'assistant', content: makeGreeting('明日香') }])
+const messages = ref([{ role: 'assistant', content: makeGreeting(props.skillName, props.greeting) }])
 const input = ref('')
 const sending = ref(false)
 const archiving = ref(false)
@@ -74,13 +78,13 @@ watch(
 )
 
 watch(
-  () => props.skillName,
-  (name) => {
+  () => [props.skillName, props.greeting],
+  ([name, greeting]) => {
     if (hasRealConversation()) return
     if (String(props.inboxReply || '').trim()) return
     const first = messages.value[0]
     if (messages.value.length === 1 && first?.role === 'assistant') {
-      first.content = makeGreeting(name)
+      first.content = makeGreeting(name, greeting)
     }
   },
 )
@@ -265,6 +269,7 @@ async function send(text, reuseUser = false) {
     await sendChatStream({
       text: content,
       sessionId: props.sessionId,
+      characterId: props.characterId,
       onSentence: async (sentence) => {
         abortFly()
         if (userMsg) {
@@ -316,7 +321,7 @@ function hasRealConversation() {
 async function newConversation() {
   if (archiving.value || sending.value) return
   const hadChat = hasRealConversation()
-  let greeting = makeGreeting(props.skillName)
+  let greeting = makeGreeting(props.skillName, props.greeting)
   if (hadChat) {
     archiving.value = true
     confirmNew.value = false
@@ -324,7 +329,11 @@ async function newConversation() {
       .filter((m) => !m.pending && m.content)
       .map((m) => ({ role: m.role, content: m.content }))
     try {
-      const res = await uploadChatHistory({ sessionId: props.sessionId, chatHistory: history })
+      const res = await uploadChatHistory({
+        sessionId: props.sessionId,
+        characterId: props.characterId,
+        chatHistory: history,
+      })
       const fromApi = String(res?.greeting || '').trim()
       if (fromApi) greeting = fromApi
     } catch (e) {

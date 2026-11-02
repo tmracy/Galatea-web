@@ -108,6 +108,9 @@ defineProps({
       <path d="M16 3v4M8 3v4M3 10h18" />
       <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" />
     </template>
+    <template v-else-if="name === 'star'">
+      <path d="m12 3 2.4 6.9H21l-5.4 4 2.1 6.6L12 16.8 6.3 20.5l2.1-6.6L3 9.9h6.6L12 3z" />
+    </template>
   </svg>
 </template>
 

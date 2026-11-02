@@ -26,6 +26,13 @@ const DEFAULT_SKILLS = [
     active: true,
     builtin: true,
   },
+  {
+    id: 'lose_weight',
+    name: '沈砚',
+    description: '减肥陪练教练',
+    active: false,
+    builtin: true,
+  },
 ]
 
 export function mockListSkills() {
@@ -75,6 +82,40 @@ export function mockLife() {
     next_event_context: '',
     events: [],
   })
+}
+
+export function mockSelectSkill({ skillId }) {
+  return Promise.resolve({ code: 0, skill_id: skillId || 'hh' })
+}
+
+export function mockMemory() {
+  return Promise.resolve({
+    code: 0,
+    memories: ['用户喜欢晚上散步。', '用户最近在准备作品集。'],
+    communities: [{ summary: '日常作息与工作节奏', community_data: ['晚间散步', '作品集'] }],
+  })
+}
+
+const MOCK_PLAZA = [
+  {
+    id: 'demo-linxia',
+    name: '林夏',
+    introduction: '住在对街的插画师，话不多，但会等你说完。',
+    kaichangbai: '下班了？我刚到家，水还烧着。',
+    skill: '---\nname: 林夏\ndescription: |\n  对街的插画师\n---\n# 林夏\n',
+    public: true,
+    stars: 3,
+    starred: false,
+  },
+]
+
+export function mockPlaza(kind) {
+  return Promise.resolve(kind === 'mine' ? [] : MOCK_PLAZA)
+}
+
+export function mockCreateCharacter({ sessionId, name, kaichangbai, introduction }) {
+  const skill = `---\nname: ${name || '自定义角色'}\ndescription: |\n  ${introduction || '自定义陪伴人设'}\n---\n\n# ${name || '自定义角色'} · 陪伴人设\n\n${kaichangbai || ''}\n`
+  return Promise.resolve({ skill, raw: { [sessionId]: skill } })
 }
 
 export function mockGenerateLife() {
